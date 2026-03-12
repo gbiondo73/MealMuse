@@ -273,7 +273,8 @@ export default function DinnerApp() {
   async function fetchSingleMeals() {
     setLoading(true); setError(null); setLoadingMsg("🍳 Finding recipes…");
     try {
-      const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, moodLabel, allergyLine);
+      const existing = meals ? meals.map(m => m.name) : [];
+      const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, moodLabel, allergyLine, "", existing);
       setMeals(raw);
       setScreen("single-result");
     } catch(e) { setError("Couldn't load recipes. Please try again."); }
@@ -284,8 +285,10 @@ export default function DinnerApp() {
   async function fetchPantryMeals() {
     setLoading(true); setError(null); setLoadingMsg("🧑‍🍳 Finding recipes for your ingredients…");
     try {
-      const extras = `Ingredients on hand: ${pantryItems.join(", ")}. Build recipes primarily around these. Common spices & oil assumed.\n`;
-      const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, "any", allergyLine, extras);
+      const existing = meals ? meals.map(m => m.name) : [];
+      const randomSeed = Math.floor(Math.random() * 10000);
+      const extras = `Ingredients on hand: ${pantryItems.join(", ")}. Build recipes primarily around these. Common spices & oil assumed. Be creative and suggest DIFFERENT recipes each time (seed: ${randomSeed}).\n`;
+      const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, "any", allergyLine, extras, existing);
       setMeals(raw);
       setScreen("single-result");
     } catch(e) { setError("Couldn't find recipes. Please try again."); }
