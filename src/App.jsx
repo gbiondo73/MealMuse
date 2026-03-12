@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const DIETS = [
   { id:"none",          label:"No Restrictions",  emoji:"🍽️", desc:"I eat everything" },
@@ -252,6 +252,32 @@ export default function DinnerApp() {
     setCalView("list"); setSelectedDay(null);
     setShowShopping(false); setCheckedItems({}); setRemovedKeys(new Set());
   }
+
+  // ── Browser back button support ──
+  // Push a history entry whenever the screen changes so the back button works
+  useEffect(() => {
+    window.history.pushState({ screen }, "", window.location.pathname);
+  }, [screen, selectedMeal, showShopping]);
+
+  useEffect(() => {
+    function handlePop() {
+      // When browser back is pressed, go back one step in app logic
+      if (showShopping) { setShowShopping(false); return; }
+      if (selectedMeal) { setSelectedMeal(null); return; }
+      const prev = {
+        "week-result": "mood",
+        "single-result": "mood",
+        "mood": "diet",
+        "diet": "welcome",
+        "pantry": "welcome",
+        "favorites": "welcome",
+      };
+      if (screen === "welcome") return; // already at home, let browser handle it
+      setScreen(prev[screen] || "welcome");
+    }
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, [screen, selectedMeal, showShopping]);
 
   const allergyLine = selectedAllergies.length ? `ALLERGIES — never include: ${selectedAllergies.map(a=>a.label).join(", ")}.` : "";
 
