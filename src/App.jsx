@@ -678,7 +678,7 @@ export default function DinnerApp() {
   if (screen==="welcome") return (
     <div style={s.bg}>
       <div style={{maxWidth:480,margin:"0 auto",padding:"60px 24px",textAlign:"center"}}>
-        <div style={{fontSize:52,letterSpacing:2,color:"#ff8c42",marginBottom:4,fontWeight:"bold"}}>MealMuse</div>
+        <img src="/mealmuse-logo.png" alt="MealMuse" style={{width:220,height:"auto",marginBottom:4}} />
         <h1 style={{fontSize:22,fontWeight:"normal",color:"#ffd27d",margin:"0 0 18px",letterSpacing:"1px"}}>What's for Dinner?</h1>
         <p style={{fontSize:15,color:"#c9b99a",lineHeight:1.75,marginBottom:10}}>
           Personalized recipes with exact measurements, photos, and videos — tailored to your diet and preferences.
