@@ -754,7 +754,7 @@ export default function DinnerApp() {
           <div style={{textAlign:"center",marginBottom:22}}>
             <div style={{fontSize:48,marginBottom:8}}>🧑‍🍳</div>
             <h2 style={{fontSize:26,fontWeight:"bold",margin:0,color:"#ffd27d"}}>What's in your fridge?</h2>
-            <p style={{color:"#a09080",marginTop:8,fontSize:14,lineHeight:1.6}}>I'll search TheMealDB for recipes using your ingredients.</p>
+            <p style={{color:"#a09080",marginTop:8,fontSize:14,lineHeight:1.6}}>I'll find recipes using your ingredients.</p>
           </div>
           <div style={{...s.card,marginBottom:14,padding:"14px 16px"}}>
             <p style={s.lbl}>🥕 Your Ingredients</p>
@@ -809,13 +809,13 @@ export default function DinnerApp() {
   // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: SINGLE RESULT
   // ─────────────────────────────────────────────────────────────────────────────
-  if (screen==="single-result"&&!selectedMeal) return (
+  if (screen==="single-result"&&!selectedMeal&&!singleShoppingMeal) return (
     <div style={s.bg}>
       <div style={{maxWidth:600,margin:"0 auto",padding:"36px 20px"}}>
         <div style={{textAlign:"center",marginBottom:20}}>
           <p style={{...s.lbl,textAlign:"center"}}>Tonight's Options</p>
           <h2 style={{fontSize:27,fontWeight:"bold",margin:"0 0 4px"}}>Real Recipes 🌟</h2>
-          <p style={{color:"#9a8070",fontSize:14}}>{selectedDiet?.label} · {servings} serving{servings!==1?"s":""} · from TheMealDB</p>
+          <p style={{color:"#9a8070",fontSize:14}}>{selectedDiet?.label} · {servings} serving{servings!==1?"s":""}</p>
         </div>
         {meals?.map((meal,i)=>(
           <div key={i} style={{...s.card,marginBottom:12,display:"flex",alignItems:"flex-start",gap:14,transition:"all 0.18s"}}
