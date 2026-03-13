@@ -567,12 +567,10 @@ export default function DinnerApp() {
           ].map(opt=>(
             <div key={opt.mode} onClick={()=>{setPlanMode(opt.mode);setScreen(opt.mode==="pantry"?"pantry":opt.mode==="favorites"?"favorites":opt.mode==="search"?"search":"diet");}} style={{
               ...s.card,cursor:"pointer",padding:"18px 22px",textAlign:"left",
-              display:"flex",alignItems:"center",gap:16,transition:"all 0.2s",
+              display:"flex",alignItems:"center",gap:16,
               border:"1px solid rgba(255,200,100,0.25)",
-            }}
-              onMouseEnter={e=>e.currentTarget.style.background="rgba(255,210,125,0.1)"}
-              onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.05)"}
-            >
+              WebkitTapHighlightColor:"rgba(255,210,125,0.2)",
+            }}>
               <span style={{fontSize:36}}>{opt.icon}</span>
               <div>
                 <div style={{fontWeight:"bold",fontSize:17,color:"#ffd27d"}}>{opt.title}</div>
@@ -663,11 +661,8 @@ export default function DinnerApp() {
         ) : (
           <>
             {favorites.map((meal,i)=>(
-              <div key={i} style={{...s.card,marginBottom:12,display:"flex",alignItems:"flex-start",gap:14,transition:"all 0.18s"}}
-                onMouseEnter={e=>e.currentTarget.style.background="rgba(255,210,125,0.09)"}
-                onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.05)"}
-              >
-                <div style={{flex:1,cursor:"pointer"}} onClick={()=>setSelectedMeal(meal)}>
+              <div key={i} onClick={()=>setSelectedMeal(meal)} style={{...s.card,marginBottom:12,display:"flex",alignItems:"flex-start",gap:14,cursor:"pointer",WebkitTapHighlightColor:"rgba(255,210,125,0.2)"}}>
+                <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:"bold",fontSize:17,color:"#ffd27d",marginBottom:3}}>{meal.emoji} {meal.name}</div>
                   <div style={{fontSize:12,color:"#9a8070",marginBottom:4}}>
                     ⏱ {meal.time} · {meal.difficulty} · 🍽️ {meal.servings} serving{meal.servings!==1?"s":""}
@@ -677,8 +672,8 @@ export default function DinnerApp() {
                   <div style={{fontSize:12,color:"#6a5a4a",marginTop:5}}>Tap for full recipe →</div>
                 </div>
                 <button
-                  onClick={()=>toggleFavorite(meal)}
-                  style={{background:"none",border:"none",cursor:"pointer",fontSize:22,lineHeight:1,padding:"4px",flexShrink:0,color:"#ff7099"}}
+                  onClick={e=>{e.stopPropagation();toggleFavorite(meal);}}
+                  style={{background:"none",border:"none",cursor:"pointer",fontSize:22,lineHeight:1,padding:"8px",flexShrink:0,color:"#ff7099"}}
                   title="Remove from favorites"
                 >♥</button>
               </div>
@@ -922,12 +917,9 @@ export default function DinnerApp() {
           <p style={{color:"#9a8070",fontSize:14}}>{selectedDiet?.label} · {servings} serving{servings!==1?"s":""}</p>
         </div>
         {meals?.map((meal,i)=>(
-          <div key={i} style={{...s.card,marginBottom:12,display:"flex",alignItems:"flex-start",gap:14,transition:"all 0.18s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,210,125,0.09)"}
-            onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.05)"}
-          >
+          <div key={i} onClick={()=>setSelectedMeal(meal)} style={{...s.card,marginBottom:12,display:"flex",alignItems:"flex-start",gap:14,cursor:"pointer",WebkitTapHighlightColor:"rgba(255,210,125,0.2)"}}>
             {meal.thumb&&<img src={meal.thumb} alt={meal.name} style={{width:80,height:80,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
-            <div style={{flex:1,cursor:"pointer"}} onClick={()=>setSelectedMeal(meal)}>
+            <div style={{flex:1,minWidth:0}}>
               <div style={{fontWeight:"bold",fontSize:17,color:"#ffd27d",marginBottom:3}}>{meal.emoji} {meal.name}</div>
               <div style={{fontSize:12,color:"#9a8070",marginBottom:4}}>{meal.area||""} {meal.category} · {meal.rating}</div>
               <div style={{fontSize:13,color:"#c9b99a",lineHeight:1.5}}>{meal.description}</div>
@@ -935,7 +927,7 @@ export default function DinnerApp() {
             </div>
             <button
               onClick={e=>{e.stopPropagation();toggleFavorite(meal);}}
-              style={{background:"none",border:"none",cursor:"pointer",fontSize:22,lineHeight:1,padding:"4px",flexShrink:0,color:isFav(meal)?"#ff7099":"#5a4a5a",transition:"all 0.2s"}}
+              style={{background:"none",border:"none",cursor:"pointer",fontSize:22,lineHeight:1,padding:"8px",flexShrink:0,color:isFav(meal)?"#ff7099":"#5a4a5a",transition:"all 0.2s"}}
               title={isFav(meal)?"Remove from favorites":"Save to favorites"}
             >{isFav(meal)?"♥":"♡"}</button>
           </div>
