@@ -408,6 +408,7 @@ export default function DinnerApp() {
   // ── Fetch: single night ──
   async function fetchSingleMeals() {
     setLoading(true); setError(null); setLoadingMsg("🍳 Finding recipes…");
+    setSelectedMeal(null); setMeals(null);
     try {
       const existing = meals ? meals.map(m => m.name) : [];
       const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, moodLabel, allergyLine, cuisineLine ? cuisineLine + "\n" : "", existing);
@@ -420,6 +421,7 @@ export default function DinnerApp() {
   // ── Fetch: pantry ──
   async function fetchPantryMeals() {
     setLoading(true); setError(null); setLoadingMsg("🧑‍🍳 Finding recipes for your ingredients…");
+    setSelectedMeal(null); setMeals(null);
     try {
       const existing = meals ? meals.map(m => m.name) : [];
       const randomSeed = Math.floor(Math.random() * 10000);
@@ -435,6 +437,7 @@ export default function DinnerApp() {
   async function fetchSearchRecipes() {
     if (!searchQuery.trim()) return;
     setLoading(true); setError(null); setLoadingMsg(`🔍 Finding ${searchQuery} recipes…`);
+    setSelectedMeal(null); setMeals(null);
     try {
       const extras = `The user specifically wants to make: "${searchQuery}". Find 3 great versions of this dish — vary the style (e.g. classic, quick, elevated). ${allergyLine}\n`;
       const raw = await fetchRecipes(3, servings, "No restrictions", "", "any", "", extras);
@@ -565,7 +568,12 @@ export default function DinnerApp() {
             {mode:"search",   icon:"🔍", title:"Search a Recipe",     sub:"Find great recipes for a specific dish"},
             {mode:"favorites",icon:"♥",  title:"My Saved Recipes",    sub:`${favorites.length} recipe${favorites.length!==1?"s":""} saved`},
           ].map(opt=>(
-            <div key={opt.mode} onClick={()=>{setPlanMode(opt.mode);setScreen(opt.mode==="pantry"?"pantry":opt.mode==="favorites"?"favorites":opt.mode==="search"?"search":"diet");}} style={{
+            <div key={opt.mode} onClick={()=>{
+              setPlanMode(opt.mode);
+              setSelectedMeal(null);
+              setSingleShoppingMeal(null);
+              setScreen(opt.mode==="pantry"?"pantry":opt.mode==="favorites"?"favorites":opt.mode==="search"?"search":"diet");
+            }} style={{
               ...s.card,cursor:"pointer",padding:"18px 22px",textAlign:"left",
               display:"flex",alignItems:"center",gap:16,
               border:"1px solid rgba(255,200,100,0.25)",
