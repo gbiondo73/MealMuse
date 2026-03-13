@@ -161,8 +161,43 @@ function LoadingScreen({msg}) {
 }
 
 
+
 function RecipeDetail({meal,onBack,backLabel="← Back",extraActions}) {
+  const [subQuery,    setSubQuery]    = useState("");
+  const [subAnswer,   setSubAnswer]   = useState(null);
+  const [subLoading,  setSubLoading]  = useState(false);
+  const [subHistory,  setSubHistory]  = useState([]);
+
   const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+
+  async function askSubstitution() {
+    if (!subQuery.trim()) return;
+    const question = subQuery.trim();
+    setSubQuery("");
+    setSubLoading(true);
+    setSubAnswer(null);
+    try {
+      const res = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:400,
+          messages:[{role:"user", content:
+            `You are a helpful chef assistant. The user is making "${meal.name}" with these ingredients: ${meal.ingredients?.join(", ")}.
+They ask: "${question}"
+Give a concise, practical answer about ingredient substitutions or cooking questions for this specific recipe. 2-4 sentences max. Be direct and helpful.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const answer = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      setSubHistory(prev=>[...prev, {q:question, a:answer}]);
+      setSubAnswer(answer);
+    } catch(e) {
+      setSubAnswer("Sorry, couldn't get an answer. Please try again.");
+    }
+    setSubLoading(false);
+  }
+
   return (
     <div>
       <button onClick={onBack} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>{backLabel}</button>
@@ -203,6 +238,47 @@ function RecipeDetail({meal,onBack,backLabel="← Back",extraActions}) {
             <p style={{margin:0,color:"#c9b99a",lineHeight:1.7,fontSize:15}}>{step}</p>
           </div>
         ))}
+      </div>
+
+      {/* Ask a question */}
+      <div style={{...s.card,marginBottom:12,background:"rgba(255,210,125,0.05)",border:"1px solid rgba(255,210,125,0.2)"}}>
+        <p style={s.lbl}>💬 Ask About This Recipe</p>
+        <p style={{color:"#9a8070",fontSize:13,margin:"-4px 0 12px"}}>Substitute an ingredient, ask a cooking question, or tweak the recipe</p>
+
+        {/* Previous Q&A history */}
+        {subHistory.map((item,i)=>(
+          <div key={i} style={{marginBottom:12}}>
+            <div style={{background:"rgba(255,210,125,0.08)",borderRadius:10,padding:"8px 12px",marginBottom:6}}>
+              <span style={{fontSize:12,color:"#ffd27d",fontWeight:"bold"}}>You: </span>
+              <span style={{fontSize:13,color:"#d0c0a8"}}>{item.q}</span>
+            </div>
+            <div style={{background:"rgba(255,255,255,0.05)",borderRadius:10,padding:"10px 12px"}}>
+              <span style={{fontSize:12,color:"#ff8c42",fontWeight:"bold"}}>Chef: </span>
+              <span style={{fontSize:13,color:"#c9b99a",lineHeight:1.6}}>{item.a}</span>
+            </div>
+          </div>
+        ))}
+
+        {/* Input */}
+        <div style={{display:"flex",gap:8}}>
+          <input
+            value={subQuery}
+            onChange={e=>setSubQuery(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&!subLoading&&askSubstitution()}
+            placeholder={subHistory.length ? "Ask another question…" : "e.g. substitute heavy cream, no soy sauce, make it spicier…"}
+            disabled={subLoading}
+            style={{flex:1,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,200,100,0.25)",borderRadius:10,padding:"10px 13px",fontSize:14,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",opacity:subLoading?0.6:1}}
+          />
+          <button
+            onClick={askSubstitution}
+            disabled={subLoading||!subQuery.trim()}
+            style={{...s.gold,padding:"10px 16px",fontSize:14,opacity:(subLoading||!subQuery.trim())?0.4:1,cursor:(subLoading||!subQuery.trim())?"not-allowed":"pointer",flexShrink:0}}
+          >{subLoading?"…":"Ask"}</button>
+        </div>
+        {subLoading&&<p style={{color:"#ffd27d",fontSize:13,margin:"10px 0 0",textAlign:"center"}}>
+          <span style={{display:"inline-block",animation:"spin 1s linear infinite"}}>👨‍🍳</span> Thinking…
+          <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+        </p>}
       </div>
 
       {/* Video */}
