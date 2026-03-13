@@ -675,6 +675,70 @@ export default function DinnerApp() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // SCREEN: SINGLE MEAL SHOPPING LIST — before favorites so it works from saved recipes
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (singleShoppingMeal) {
+    const list = categorizeMealIngredients(singleShoppingMeal.ingredients);
+    const allItems = Object.values(list).flat();
+    const checkedCount = Object.values(sChecked).filter(Boolean).length;
+    const uncheckedItems = Object.entries(list).reduce((acc, [cat, items]) => {
+      const unchecked = items.filter((_,idx) => !sChecked[`${cat}-${idx}`]);
+      if (unchecked.length) acc[cat] = unchecked;
+      return acc;
+    }, {});
+    function handleSPrint() {
+      const win = window.open("","_blank");
+      win.document.write(`<html><head><title>${singleShoppingMeal.name} · Shopping List</title><style>body{font-family:Georgia,serif;max-width:480px;margin:40px auto;color:#222;line-height:1.7}h1{font-size:20px}h2{font-size:13px;font-weight:normal;color:#888;margin-top:0}.cat{font-weight:bold;text-transform:uppercase;font-size:11px;color:#666;margin:16px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px}.item{padding:3px 0 3px 14px;font-size:15px}.total{color:#888;font-style:italic;font-size:13px;margin-left:6px}</style></head><body><h1>🛒 ${singleShoppingMeal.name}</h1><h2>${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""} · MealMuse</h2>${Object.entries(uncheckedItems).map(([cat,items])=>`<div class="cat">${cat}</div>${items.map(item=>`<div class="item">☐ ${item.label}${item.total?`<span class="total">(${item.total})</span>`:""}</div>`).join("")}`).join("")}</body></html>`);
+      win.document.close(); win.focus(); setTimeout(()=>win.print(),400);
+    }
+    function handleSEmail() {
+      const lines = [`Shopping List: ${singleShoppingMeal.name}`,`${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""}`,"",...Object.entries(uncheckedItems).flatMap(([cat,items])=>[`── ${cat} ──`,...items.map(i=>`  • ${i.label}${i.total?` (${i.total})`:""}`),""]),];
+      window.open(`mailto:?subject=${encodeURIComponent(`🛒 ${singleShoppingMeal.name} — Shopping List`)}&body=${encodeURIComponent(lines.join("\n"))}`);
+    }
+    function handleSText() {
+      const lines = [`${singleShoppingMeal.name} Shopping List:`,...Object.values(uncheckedItems).flat().map(i=>`• ${i.label}${i.total?` (${i.total})`:""}`)];
+      window.open(`sms:?body=${encodeURIComponent(lines.join("\n"))}`);
+    }
+    return wrap(<>
+      <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>← Back to Recipe</button>
+      <div style={{textAlign:"center",marginBottom:18}}>
+        <h2 style={{fontSize:24,fontWeight:"bold",margin:"0 0 4px"}}>🛒 Shopping List</h2>
+        <p style={{color:"#9a8070",fontSize:14,margin:0}}>{singleShoppingMeal.emoji} {singleShoppingMeal.name} · {singleShoppingMeal.servings} serving{singleShoppingMeal.servings!==1?"s":""}</p>
+        {allItems.length>0&&<div style={{marginTop:12,...s.card,display:"inline-block",padding:"12px 20px",minWidth:200}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:13}}><span style={{color:"#9a8070"}}>Items checked</span><span><span style={{color:"#ffd27d",fontWeight:"bold"}}>{checkedCount}</span><span style={{color:"#6a5a4a"}}> / {allItems.length}</span></span></div>
+          <div style={{background:"rgba(255,255,255,0.08)",borderRadius:10,height:8,overflow:"hidden"}}><div style={{height:"100%",borderRadius:10,transition:"width 0.4s",background:"linear-gradient(90deg,#ffd27d,#ff8c42)",width:`${allItems.length>0?(checkedCount/allItems.length)*100:0}%`}}/></div>
+        </div>}
+      </div>
+      {Object.entries(list).map(([cat,items])=>(
+        <div key={cat} style={{...s.card,marginBottom:10}}>
+          <p style={{...s.lbl,marginBottom:10}}>{CAT_EMOJI[cat]||"🛒"} {cat}</p>
+          {items.map((item,idx)=>{const key=`${cat}-${idx}`;const done=sChecked[key];return(
+            <div key={key} onClick={()=>setSChecked(prev=>({...prev,[key]:!prev[key]}))} style={{display:"flex",alignItems:"center",gap:11,padding:"7px 0",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+              <div style={{width:19,height:19,borderRadius:5,flexShrink:0,border:done?"none":"2px solid rgba(255,200,100,0.4)",background:done?"linear-gradient(135deg,#ffd27d,#ff8c42)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {done&&<span style={{color:"#1a0a2e",fontSize:11,fontWeight:"bold"}}>✓</span>}
+              </div>
+              <span style={{flex:1,fontSize:14,color:done?"#6a5a4a":"#d0c0a8",textDecoration:done?"line-through":"none"}}>{item.label}</span>
+              {item.total&&<span style={{fontSize:12,color:done?"#5a4a3a":"#ffd27d",fontStyle:"italic",opacity:done?0.5:1}}>({item.total})</span>}
+            </div>
+          );})}
+        </div>
+      ))}
+      <div style={{...s.card,marginBottom:12,padding:"12px 16px",background:"rgba(255,255,255,0.03)"}}>
+        <p style={{...s.lbl,marginBottom:10}}>📤 Share or Print</p>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={handleSPrint} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.18)",color:"#f0e6d3",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>🖨️ Print</button>
+          <button onClick={handleSEmail} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(100,160,255,0.1)",border:"1px solid rgba(100,160,255,0.3)",color:"#a0c0ff",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>✉️ Email</button>
+          <button onClick={handleSText} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(100,220,100,0.1)",border:"1px solid rgba(100,220,100,0.3)",color:"#90d090",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>💬 Text</button>
+        </div>
+      </div>
+      <div style={{display:"flex",gap:12}}>
+        <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back to Recipe</button>
+        <button onClick={resetAll} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>🏠 Start Over</button>
+      </div>
+    </>);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: FAVORITES
   // ─────────────────────────────────────────────────────────────────────────────
   if (screen==="favorites") return (
@@ -980,76 +1044,6 @@ export default function DinnerApp() {
       </div>
     </div>
   );
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // SCREEN: SINGLE MEAL SHOPPING LIST
-  // ─────────────────────────────────────────────────────────────────────────────
-  if (singleShoppingMeal) {
-    const list = categorizeMealIngredients(singleShoppingMeal.ingredients);
-    const allItems = Object.values(list).flat();
-    const checkedCount = Object.values(sChecked).filter(Boolean).length;
-
-    const uncheckedItems = Object.entries(list).reduce((acc, [cat, items]) => {
-      const unchecked = items.filter((_,idx) => !sChecked[`${cat}-${idx}`]);
-      if (unchecked.length) acc[cat] = unchecked;
-      return acc;
-    }, {});
-
-    function handleSPrint() {
-      const win = window.open("","_blank");
-      win.document.write(`<html><head><title>${singleShoppingMeal.name} · Shopping List</title><style>body{font-family:Georgia,serif;max-width:480px;margin:40px auto;color:#222;line-height:1.7}h1{font-size:20px}h2{font-size:13px;font-weight:normal;color:#888;margin-top:0}.cat{font-weight:bold;text-transform:uppercase;font-size:11px;color:#666;margin:16px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px}.item{padding:3px 0 3px 14px;font-size:15px}.total{color:#888;font-style:italic;font-size:13px;margin-left:6px}</style></head><body><h1>🛒 ${singleShoppingMeal.name}</h1><h2>${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""} · MealMuse</h2>${Object.entries(uncheckedItems).map(([cat,items])=>`<div class="cat">${cat}</div>${items.map(item=>`<div class="item">☐ ${item.label}${item.total?`<span class="total">(${item.total})</span>`:""}</div>`).join("")}`).join("")}</body></html>`);
-      win.document.close(); win.focus(); setTimeout(()=>win.print(),400);
-    }
-    function handleSEmail() {
-      const lines = [`Shopping List: ${singleShoppingMeal.name}`,`${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""}`,"",...Object.entries(uncheckedItems).flatMap(([cat,items])=>[`── ${cat} ──`,...items.map(i=>`  • ${i.label}${i.total?` (${i.total})`:""}`),""]),];
-      window.open(`mailto:?subject=${encodeURIComponent(`🛒 ${singleShoppingMeal.name} — Shopping List`)}&body=${encodeURIComponent(lines.join("\n"))}`);
-    }
-    function handleSText() {
-      const lines = [`${singleShoppingMeal.name} Shopping List:`,...Object.values(uncheckedItems).flat().map(i=>`• ${i.label}${i.total?` (${i.total})`:""}`)];
-      window.open(`sms:?body=${encodeURIComponent(lines.join("\n"))}`);
-    }
-
-    return wrap(<>
-      <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>← Back to Recipe</button>
-      <div style={{textAlign:"center",marginBottom:18}}>
-        <h2 style={{fontSize:24,fontWeight:"bold",margin:"0 0 4px"}}>🛒 Shopping List</h2>
-        <p style={{color:"#9a8070",fontSize:14,margin:0}}>{singleShoppingMeal.emoji} {singleShoppingMeal.name} · {singleShoppingMeal.servings} serving{singleShoppingMeal.servings!==1?"s":""}</p>
-        {allItems.length>0&&<div style={{marginTop:12,...s.card,display:"inline-block",padding:"12px 20px",minWidth:200}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:13}}><span style={{color:"#9a8070"}}>Items checked</span><span><span style={{color:"#ffd27d",fontWeight:"bold"}}>{checkedCount}</span><span style={{color:"#6a5a4a"}}> / {allItems.length}</span></span></div>
-          <div style={{background:"rgba(255,255,255,0.08)",borderRadius:10,height:8,overflow:"hidden"}}><div style={{height:"100%",borderRadius:10,transition:"width 0.4s",background:"linear-gradient(90deg,#ffd27d,#ff8c42)",width:`${allItems.length>0?(checkedCount/allItems.length)*100:0}%`}}/></div>
-        </div>}
-      </div>
-
-      {Object.entries(list).map(([cat,items])=>(
-        <div key={cat} style={{...s.card,marginBottom:10}}>
-          <p style={{...s.lbl,marginBottom:10}}>{CAT_EMOJI[cat]||"🛒"} {cat}</p>
-          {items.map((item,idx)=>{const key=`${cat}-${idx}`;const done=sChecked[key];return(
-            <div key={key} onClick={()=>setSChecked(prev=>({...prev,[key]:!prev[key]}))} style={{display:"flex",alignItems:"center",gap:11,padding:"7px 0",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-              <div style={{width:19,height:19,borderRadius:5,flexShrink:0,border:done?"none":"2px solid rgba(255,200,100,0.4)",background:done?"linear-gradient(135deg,#ffd27d,#ff8c42)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {done&&<span style={{color:"#1a0a2e",fontSize:11,fontWeight:"bold"}}>✓</span>}
-              </div>
-              <span style={{flex:1,fontSize:14,color:done?"#6a5a4a":"#d0c0a8",textDecoration:done?"line-through":"none"}}>{item.label}</span>
-              {item.total&&<span style={{fontSize:12,color:done?"#5a4a3a":"#ffd27d",fontStyle:"italic",opacity:done?0.5:1}}>({item.total})</span>}
-            </div>
-          );})}
-        </div>
-      ))}
-
-      <div style={{...s.card,marginBottom:12,padding:"12px 16px",background:"rgba(255,255,255,0.03)"}}>
-        <p style={{...s.lbl,marginBottom:10}}>📤 Share or Print</p>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={handleSPrint} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.18)",color:"#f0e6d3",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>🖨️ Print</button>
-          <button onClick={handleSEmail} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(100,160,255,0.1)",border:"1px solid rgba(100,160,255,0.3)",color:"#a0c0ff",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>✉️ Email</button>
-          <button onClick={handleSText} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(100,220,100,0.1)",border:"1px solid rgba(100,220,100,0.3)",color:"#90d090",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>💬 Text</button>
-        </div>
-      </div>
-
-      <div style={{display:"flex",gap:12}}>
-        <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back to Recipe</button>
-        <button onClick={resetAll} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>🏠 Start Over</button>
-      </div>
-    </>);
-  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: SHOPPING LIST
