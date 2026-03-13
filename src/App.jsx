@@ -647,6 +647,34 @@ export default function DinnerApp() {
   );
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // RECIPE DETAIL — before favorites so tapping a saved recipe navigates here
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (selectedMeal) return wrap(
+    <RecipeDetail meal={selectedMeal} onBack={()=>setSelectedMeal(null)}
+      backLabel={screen==="week-result"?"← Back to Plan":screen==="favorites"?"← Back to Favorites":"← Back to Options"}
+      extraActions={
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          <button onClick={()=>setSelectedMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
+          <button
+            onClick={()=>toggleFavorite(selectedMeal)}
+            style={{
+              flex:1, padding:"12px", fontSize:14, borderRadius:50, cursor:"pointer",
+              fontFamily:"'Georgia',serif", fontWeight:"bold", transition:"all 0.2s",
+              background: isFav(selectedMeal) ? "rgba(255,80,120,0.18)" : "rgba(255,255,255,0.06)",
+              border: isFav(selectedMeal) ? "1px solid rgba(255,100,140,0.5)" : "1px solid rgba(255,255,255,0.12)",
+              color: isFav(selectedMeal) ? "#ff7099" : "#a09080",
+            }}
+          >{isFav(selectedMeal) ? "♥ Saved!" : "♡ Save Recipe"}</button>
+          {screen==="week-result"
+            ? <button onClick={()=>{setSelectedMeal(null);setShowShopping(true);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
+            : <button onClick={()=>{setSChecked({});setSingleShoppingMeal(selectedMeal);setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
+          }
+        </div>
+      }
+    />
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: FAVORITES
   // ─────────────────────────────────────────────────────────────────────────────
   if (screen==="favorites") return (
@@ -951,34 +979,6 @@ export default function DinnerApp() {
         </div>
       </div>
     </div>
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RECIPE DETAIL
-  // ─────────────────────────────────────────────────────────────────────────────
-  if (selectedMeal) return wrap(
-    <RecipeDetail meal={selectedMeal} onBack={()=>setSelectedMeal(null)}
-      backLabel={screen==="week-result"?"← Back to Plan":"← Back to Options"}
-      extraActions={
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <button onClick={()=>setSelectedMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
-          <button
-            onClick={()=>toggleFavorite(selectedMeal)}
-            style={{
-              flex:1, padding:"12px", fontSize:14, borderRadius:50, cursor:"pointer",
-              fontFamily:"'Georgia',serif", fontWeight:"bold", transition:"all 0.2s",
-              background: isFav(selectedMeal) ? "rgba(255,80,120,0.18)" : "rgba(255,255,255,0.06)",
-              border: isFav(selectedMeal) ? "1px solid rgba(255,100,140,0.5)" : "1px solid rgba(255,255,255,0.12)",
-              color: isFav(selectedMeal) ? "#ff7099" : "#a09080",
-            }}
-          >{isFav(selectedMeal) ? "♥ Saved!" : "♡ Save Recipe"}</button>
-          {screen==="week-result"
-            ? <button onClick={()=>{setSelectedMeal(null);setShowShopping(true);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
-            : <button onClick={()=>{setSChecked({});setSingleShoppingMeal(selectedMeal);setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
-          }
-        </div>
-      }
-    />
   );
 
   // ─────────────────────────────────────────────────────────────────────────────
