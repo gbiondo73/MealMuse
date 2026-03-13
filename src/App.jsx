@@ -162,13 +162,75 @@ function LoadingScreen({msg}) {
 
 
 
-function RecipeDetail({meal,onBack,backLabel="← Back",extraActions}) {
+function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,addedSides=[]}) {
   const [subQuery,    setSubQuery]    = useState("");
   const [subAnswer,   setSubAnswer]   = useState(null);
   const [subLoading,  setSubLoading]  = useState(false);
   const [subHistory,  setSubHistory]  = useState([]);
 
+  const [sidesData,   setSidesData]   = useState(null);
+  const [sidesLoading,setSidesLoading]= useState(false);
+  const [sideRecipes, setSideRecipes] = useState({}); // name -> full recipe
+  const [loadingSide, setLoadingSide] = useState(null);
+
   const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+
+  async function fetchSidesAndWine() {
+    setSidesLoading(true);
+    try {
+      const res = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:600,
+          messages:[{role:"user", content:
+            `For the dish "${meal.name}", suggest 3 complementary side dishes and 1-2 wine pairings.
+Respond ONLY with valid JSON, no markdown, no extra text:
+{
+  "sides": [
+    {"name":"...", "emoji":"...", "description":"...one sentence..."},
+    {"name":"...", "emoji":"...", "description":"...one sentence..."},
+    {"name":"...", "emoji":"...", "description":"...one sentence..."}
+  ],
+  "wine": [
+    {"name":"...", "type":"red|white|rosé|sparkling", "note":"...one sentence why it pairs well..."},
+    {"name":"...", "type":"red|white|rosé|sparkling", "note":"...one sentence why it pairs well..."}
+  ]
+}`
+          }]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const clean = text.replace(/```json|```/g,"").trim();
+      setSidesData(JSON.parse(clean));
+    } catch(e) { setSidesData({error:true}); }
+    setSidesLoading(false);
+  }
+
+  async function addSideRecipe(side) {
+    if (sideRecipes[side.name] || addedSides.includes(side.name)) return;
+    setLoadingSide(side.name);
+    try {
+      const res = await fetch("/api/claude", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:800,
+          messages:[{role:"user", content:
+            `Generate a complete recipe for "${side.name}" as a side dish to serve with "${meal.name}" for ${meal.servings} serving${meal.servings!==1?"s":""}.
+Respond ONLY with valid JSON, no markdown:
+{"name":"...","emoji":"...","ingredients":["2 tbsp butter","..."],"steps":["...","..."],"time":"...","servings":${meal.servings}}`
+          }]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const clean = text.replace(/```json|```/g,"").trim();
+      const recipe = JSON.parse(clean);
+      setSideRecipes(prev=>({...prev,[side.name]:recipe}));
+      if (onAddSide) onAddSide(recipe);
+    } catch(e) { console.error("Side recipe error",e); }
+    setLoadingSide(null);
+  }
 
   async function askSubstitution() {
     if (!subQuery.trim()) return;
@@ -281,6 +343,70 @@ Give a concise, practical answer about ingredient substitutions or cooking quest
         </p>}
       </div>
 
+      {/* Sides & Wine */}
+      <div style={{...s.card,marginBottom:12,background:"rgba(100,200,120,0.05)",border:"1px solid rgba(100,200,120,0.2)"}}>
+        <p style={{...s.lbl,color:"#90d090",marginBottom:4}}>🍷 Sides & Wine Pairings</p>
+        {!sidesData && !sidesLoading && (
+          <button onClick={fetchSidesAndWine} style={{...s.ghost,width:"100%",padding:"10px",fontSize:14,marginTop:4,borderColor:"rgba(100,200,120,0.3)",color:"#90d090"}}>
+            ✨ Get Recommendations
+          </button>
+        )}
+        {sidesLoading && <p style={{color:"#90d090",fontSize:13,textAlign:"center",margin:"10px 0"}}>
+          <span style={{display:"inline-block",animation:"spin 1s linear infinite"}}>🍷</span> Finding perfect pairings…
+          <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+        </p>}
+        {sidesData && !sidesData.error && <>
+          {/* Side dishes */}
+          <p style={{fontSize:12,color:"#90d090",fontWeight:"bold",letterSpacing:1.5,textTransform:"uppercase",margin:"8px 0 10px"}}>Side Dishes</p>
+          {sidesData.sides?.map((side,i)=>{
+            const added = addedSides.includes(side.name) || sideRecipes[side.name];
+            const isLoading = loadingSide === side.name;
+            return (
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+                <span style={{fontSize:22,flexShrink:0}}>{side.emoji}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:"bold",fontSize:14,color:"#d0c0a8"}}>{side.name}</div>
+                  <div style={{fontSize:12,color:"#8a7a6a",lineHeight:1.4}}>{side.description}</div>
+                </div>
+                <button
+                  onClick={()=>addSideRecipe(side)}
+                  disabled={!!added||isLoading}
+                  style={{flexShrink:0,padding:"6px 12px",borderRadius:20,fontSize:12,fontWeight:"bold",cursor:added?"default":"pointer",fontFamily:"Georgia,serif",border:"none",
+                    background:added?"rgba(100,200,120,0.2)":isLoading?"rgba(255,210,125,0.1)":"linear-gradient(135deg,#90d090,#50a050)",
+                    color:added?"#90d090":isLoading?"#ffd27d":"#1a0a2e",
+                    opacity:isLoading?0.7:1
+                  }}
+                >{isLoading?"Adding…":added?"✓ Added":"+ Add"}</button>
+              </div>
+            );
+          })}
+          {/* Wine pairings */}
+          <p style={{fontSize:12,color:"#c090d0",fontWeight:"bold",letterSpacing:1.5,textTransform:"uppercase",margin:"14px 0 10px"}}>Wine Pairings</p>
+          {sidesData.wine?.map((wine,i)=>{
+            const typeColor = {red:"#d07070",white:"#d0c070",rosé:"#d090a0",sparkling:"#90b0d0"}[wine.type]||"#a09080";
+            return (
+              <div key={i} style={{display:"flex",gap:10,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+                <span style={{fontSize:22,flexShrink:0}}>🍷</span>
+                <div>
+                  <div style={{fontWeight:"bold",fontSize:14,color:"#d0c0a8"}}>{wine.name}
+                    <span style={{marginLeft:8,fontSize:11,color:typeColor,background:"rgba(255,255,255,0.07)",padding:"2px 7px",borderRadius:10}}>{wine.type}</span>
+                  </div>
+                  <div style={{fontSize:12,color:"#8a7a6a",lineHeight:1.4,marginTop:2}}>{wine.note}</div>
+                </div>
+              </div>
+            );
+          })}
+        </>}
+        {sidesData?.error && <p style={{color:"#ff9090",fontSize:13,margin:"8px 0"}}>Couldn't load suggestions. <button onClick={fetchSidesAndWine} style={{background:"none",border:"none",color:"#ffd27d",cursor:"pointer",fontSize:13,textDecoration:"underline"}}>Try again</button></p>}
+      </div>
+
+      {/* Added sides summary */}
+      {addedSides.length>0 && <div style={{...s.card,marginBottom:12,background:"rgba(100,200,120,0.07)",border:"1px solid rgba(100,200,120,0.25)"}}>
+        <p style={{...s.lbl,color:"#90d090",marginBottom:8}}>✓ Added to your meal</p>
+        {addedSides.map((name,i)=><div key={i} style={{fontSize:13,color:"#90d090",padding:"3px 0"}}>• {name}</div>)}
+        <p style={{fontSize:12,color:"#6a8a6a",margin:"8px 0 0"}}>Ingredients included in shopping list 🛒</p>
+      </div>}
+
       {/* Video */}
       <div style={{...s.card,background:"rgba(255,50,50,0.06)",border:"1px solid rgba(255,80,80,0.2)",marginBottom:12}}>
         <p style={{...s.lbl,color:"#ff8070",marginBottom:10}}>▶ Watch It Being Made</p>
@@ -331,6 +457,7 @@ export default function DinnerApp() {
   const [searchQuery,  setSearchQuery]  = useState("");
   const [singleShoppingMeal, setSingleShoppingMeal] = useState(null);
   const [sChecked,           setSChecked]           = useState({});
+  const [addedSides,         setAddedSides]         = useState([]); // [{name, ingredients, ...}]
 
   useState(() => {
     try {
@@ -354,7 +481,7 @@ export default function DinnerApp() {
     setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiets([]); setCustomDietInput(""); setSelectedCuisines([]); setCustomCuisines([]); setCustomCuisineInput(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
-    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({});
+    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({}); setAddedSides([]);
     setWeekPlan(null); setDayServings({}); setExcludedDays(new Set()); setReplacingDay(null); setRescalingDay(null);
     setCalView("list"); setSelectedDay(null);
     setShowShopping(false); setCheckedItems({}); setRemovedKeys(new Set());
@@ -652,6 +779,8 @@ export default function DinnerApp() {
   if (selectedMeal) return wrap(
     <RecipeDetail meal={selectedMeal} onBack={()=>setSelectedMeal(null)}
       backLabel={screen==="week-result"?"← Back to Plan":screen==="favorites"?"← Back to Favorites":"← Back to Options"}
+      addedSides={addedSides.map(s=>s.name)}
+      onAddSide={(sideRecipe)=>setAddedSides(prev=>[...prev,sideRecipe])}
       extraActions={
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           <button onClick={()=>setSelectedMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
@@ -667,7 +796,7 @@ export default function DinnerApp() {
           >{isFav(selectedMeal) ? "♥ Saved!" : "♡ Save Recipe"}</button>
           {screen==="week-result"
             ? <button onClick={()=>{setSelectedMeal(null);setShowShopping(true);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
-            : <button onClick={()=>{setSChecked({});setSingleShoppingMeal(selectedMeal);setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
+            : <button onClick={()=>{setSChecked({});setSingleShoppingMeal({...selectedMeal, sides: addedSides});setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
           }
         </div>
       }
@@ -678,7 +807,11 @@ export default function DinnerApp() {
   // SCREEN: SINGLE MEAL SHOPPING LIST — before favorites so it works from saved recipes
   // ─────────────────────────────────────────────────────────────────────────────
   if (singleShoppingMeal) {
-    const list = categorizeMealIngredients(singleShoppingMeal.ingredients);
+    const allIngredients = [
+      ...(singleShoppingMeal.ingredients||[]),
+      ...(singleShoppingMeal.sides||[]).flatMap(s=>s.ingredients||[])
+    ];
+    const list = categorizeMealIngredients(allIngredients);
     const allItems = Object.values(list).flat();
     const checkedCount = Object.values(sChecked).filter(Boolean).length;
     const uncheckedItems = Object.entries(list).reduce((acc, [cat, items]) => {
@@ -703,7 +836,7 @@ export default function DinnerApp() {
       <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>← Back to Recipe</button>
       <div style={{textAlign:"center",marginBottom:18}}>
         <h2 style={{fontSize:24,fontWeight:"bold",margin:"0 0 4px"}}>🛒 Shopping List</h2>
-        <p style={{color:"#9a8070",fontSize:14,margin:0}}>{singleShoppingMeal.emoji} {singleShoppingMeal.name} · {singleShoppingMeal.servings} serving{singleShoppingMeal.servings!==1?"s":""}</p>
+        <p style={{color:"#9a8070",fontSize:14,margin:0}}>{singleShoppingMeal.emoji} {singleShoppingMeal.name}{singleShoppingMeal.sides?.length?` + ${singleShoppingMeal.sides.map(s=>s.name).join(", ")}`:""} · {singleShoppingMeal.servings} serving{singleShoppingMeal.servings!==1?"s":""}</p>
         {allItems.length>0&&<div style={{marginTop:12,...s.card,display:"inline-block",padding:"12px 20px",minWidth:200}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:13}}><span style={{color:"#9a8070"}}>Items checked</span><span><span style={{color:"#ffd27d",fontWeight:"bold"}}>{checkedCount}</span><span style={{color:"#6a5a4a"}}> / {allItems.length}</span></span></div>
           <div style={{background:"rgba(255,255,255,0.08)",borderRadius:10,height:8,overflow:"hidden"}}><div style={{height:"100%",borderRadius:10,transition:"width 0.4s",background:"linear-gradient(90deg,#ffd27d,#ff8c42)",width:`${allItems.length>0?(checkedCount/allItems.length)*100:0}%`}}/></div>
