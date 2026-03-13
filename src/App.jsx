@@ -138,7 +138,44 @@ const s = {
 function wrap(children){return <div style={s.bg}><div style={{maxWidth:660,margin:"0 auto",padding:"36px 20px"}}>{children}</div></div>;}
 
 // ── Loading screen with animation ────────────────────────────────────────────
+const FUN_FACTS = [
+  "🍕 Pizza was invented in Naples, Italy in the 18th century — and was originally considered peasant food.",
+  "🧄 Garlic has been used as both food and medicine for over 7,000 years.",
+  "🍣 Sushi originally referred to the rice, not the fish — the fish was just a topping.",
+  "🌶️ Capsaicin, the compound that makes chilis hot, doesn't actually burn you — it just tricks your brain into thinking it does.",
+  "🧀 There are over 1,800 named varieties of cheese in the world.",
+  "🍫 It takes approximately 400 cocoa beans to make just one pound of chocolate.",
+  "🥑 Avocados are technically a fruit — and a single tree can produce up to 200 avocados per year.",
+  "🍝 Pasta wasn't invented in Italy — it likely originated in China and was brought west along trade routes.",
+  "🐄 It takes about 10 pounds of milk to make just 1 pound of cheese.",
+  "🍞 Ancient Egyptians were the first to make leavened bread — over 4,000 years ago.",
+  "🦞 Lobster was once so plentiful in America that it was fed to prisoners and considered a poor man's food.",
+  "🧅 Onions were used as currency in ancient Egypt and given as offerings to the gods.",
+  "🍊 Orange is named after the fruit — not the other way around. Before oranges arrived in Europe, the color was called 'yellow-red'.",
+  "🥩 A properly rested steak can be up to 7°F warmer inside than one cut immediately — resting really matters!",
+  "🍵 Tea is the second most consumed beverage in the world, after water.",
+  "🍯 Honey never spoils — edible honey has been found in 3,000-year-old Egyptian tombs.",
+  "🌿 Fresh herbs are typically 3x more potent when added at the end of cooking rather than the beginning.",
+  "🫙 Fermenting food was humanity's first method of food preservation, dating back over 10,000 years.",
+  "🍋 Lemon juice can prevent cut fruits from browning because it slows oxidation.",
+  "🥚 The color of a chicken's eggshell is determined by the breed — it has no effect on flavor or nutrition.",
+];
+
 function LoadingScreen({msg}) {
+  const [factIdx, setFactIdx] = useState(() => Math.floor(Math.random() * FUN_FACTS.length));
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setFactIdx(i => (i + 1) % FUN_FACTS.length);
+        setFade(true);
+      }, 400);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div style={s.bg}>
       <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
@@ -152,14 +189,19 @@ function LoadingScreen({msg}) {
             }}/>
           ))}
         </div>
-        <p style={{color:"#ffd27d",fontSize:18,fontWeight:"bold",margin:"0 0 8px"}}>{msg||"Finding recipes…"}</p>
-        <p style={{color:"#9a8070",fontSize:14,margin:0}}>This usually takes 5–10 seconds</p>
+        <p style={{color:"#ffd27d",fontSize:18,fontWeight:"bold",margin:"0 0 6px"}}>{msg||"Finding recipes…"}</p>
+        <p style={{color:"#9a8070",fontSize:13,margin:"0 0 32px"}}>This usually takes 5–10 seconds</p>
+
+        <div style={{maxWidth:360,padding:"20px 24px",borderRadius:16,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,210,125,0.15)",transition:"opacity 0.4s",opacity:fade?1:0}}>
+          <p style={{color:"#ffd27d",fontSize:11,letterSpacing:2,textTransform:"uppercase",margin:"0 0 10px"}}>Did you know?</p>
+          <p style={{color:"#c9b99a",fontSize:14,lineHeight:1.7,margin:0}}>{FUN_FACTS[factIdx]}</p>
+        </div>
+
         <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}`}</style>
       </div>
     </div>
   );
 }
-
 
 
 function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,addedSides=[]}) {
