@@ -231,6 +231,7 @@ export default function DinnerApp() {
   const [favorites,    setFavorites]    = useState([]);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [singleShoppingMeal, setSingleShoppingMeal] = useState(null);
+  const [sChecked,           setSChecked]           = useState({});
 
   useState(() => {
     try {
@@ -254,7 +255,7 @@ export default function DinnerApp() {
     setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiets([]); setCustomDietInput(""); setSelectedCuisines([]); setCustomCuisines([]); setCustomCuisineInput(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
-    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null);
+    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({});
     setWeekPlan(null); setDayServings({}); setExcludedDays(new Set()); setReplacingDay(null); setRescalingDay(null);
     setCalView("list"); setSelectedDay(null);
     setShowShopping(false); setCheckedItems({}); setRemovedKeys(new Set());
@@ -443,7 +444,6 @@ export default function DinnerApp() {
   if (screen==="welcome") return (
     <div style={s.bg}>
       <div style={{maxWidth:480,margin:"0 auto",padding:"60px 24px",textAlign:"center"}}>
-        <div style={{fontSize:72,marginBottom:10}}>🌙</div>
         <div style={{fontSize:52,letterSpacing:2,color:"#ff8c42",marginBottom:4,fontWeight:"bold"}}>MealMuse</div>
         <h1 style={{fontSize:22,fontWeight:"normal",color:"#ffd27d",margin:"0 0 18px",letterSpacing:"1px"}}>What's for Dinner?</h1>
         <p style={{fontSize:15,color:"#c9b99a",lineHeight:1.75,marginBottom:10}}>
@@ -870,7 +870,7 @@ export default function DinnerApp() {
           >{isFav(selectedMeal) ? "♥ Saved!" : "♡ Save Recipe"}</button>
           {screen==="week-result"
             ? <button onClick={()=>{setSelectedMeal(null);setShowShopping(true);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
-            : <button onClick={()=>{setSingleShoppingMeal(selectedMeal);setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
+            : <button onClick={()=>{setSChecked({});setSingleShoppingMeal(selectedMeal);setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
           }
         </div>
       }
@@ -882,7 +882,6 @@ export default function DinnerApp() {
   // ─────────────────────────────────────────────────────────────────────────────
   if (singleShoppingMeal) {
     const list = categorizeMealIngredients(singleShoppingMeal.ingredients);
-    const [sChecked, setSChecked] = useState({});
     const allItems = Object.values(list).flat();
     const checkedCount = Object.values(sChecked).filter(Boolean).length;
 
