@@ -137,7 +137,30 @@ const s = {
 };
 function wrap(children){return <div style={s.bg}><div style={{maxWidth:660,margin:"0 auto",padding:"36px 20px"}}>{children}</div></div>;}
 
-// ── Recipe Detail component ───────────────────────────────────────────────────
+// ── Loading screen with animation ────────────────────────────────────────────
+function LoadingScreen({msg}) {
+  return (
+    <div style={s.bg}>
+      <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 24px",textAlign:"center"}}>
+        <div style={{marginBottom:28}}>
+          {[0,1,2].map(i=>(
+            <span key={i} style={{
+              display:"inline-block", width:12, height:12, borderRadius:"50%",
+              background:"linear-gradient(135deg,#ffd27d,#ff8c42)",
+              margin:"0 5px",
+              animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite`,
+            }}/>
+          ))}
+        </div>
+        <p style={{color:"#ffd27d",fontSize:18,fontWeight:"bold",margin:"0 0 8px"}}>{msg||"Finding recipes…"}</p>
+        <p style={{color:"#9a8070",fontSize:14,margin:0}}>This usually takes 5–10 seconds</p>
+        <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}`}</style>
+      </div>
+    </div>
+  );
+}
+
+
 function RecipeDetail({meal,onBack,backLabel="← Back",extraActions}) {
   const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
   return (
@@ -439,6 +462,11 @@ export default function DinnerApp() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // LOADING SCREEN
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (loading) return <LoadingScreen msg={loadingMsg} />;
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: WELCOME
   // ─────────────────────────────────────────────────────────────────────────────
   if (screen==="welcome") return (
@@ -611,7 +639,7 @@ export default function DinnerApp() {
       { id:"gluten-free", label:"Gluten-Free",      emoji:"🌾", desc:"No wheat or gluten" },
       { id:"dairy-free",  label:"Dairy-Free",       emoji:"🥛", desc:"No milk products" },
     ];
-    const canProceed = selectedDiet || customDiets.length > 0;
+    const canProceed = true; // always allow — no selection required
     function addCuisine(val) {
       const t = val.trim();
       if (t && !customCuisines.includes(t) && !selectedCuisines.includes(t)) setCustomCuisines(prev=>[...prev,t]);
@@ -885,13 +913,25 @@ export default function DinnerApp() {
     const allItems = Object.values(list).flat();
     const checkedCount = Object.values(sChecked).filter(Boolean).length;
 
+    const uncheckedItems = Object.entries(list).reduce((acc, [cat, items]) => {
+      const unchecked = items.filter((_,idx) => !sChecked[`${cat}-${idx}`]);
+      if (unchecked.length) acc[cat] = unchecked;
+      return acc;
+    }, {});
+
     function handleSPrint() {
       const win = window.open("","_blank");
-      win.document.write(`<html><head><title>${singleShoppingMeal.name} · Shopping List</title><style>body{font-family:Georgia,serif;max-width:480px;margin:40px auto;color:#222;line-height:1.7}h1{font-size:20px}h2{font-size:13px;font-weight:normal;color:#888;margin-top:0}.cat{font-weight:bold;text-transform:uppercase;font-size:11px;color:#666;margin:16px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px}.item{padding:3px 0 3px 14px;font-size:15px}.total{color:#888;font-style:italic;font-size:13px;margin-left:6px}</style></head><body><h1>🛒 ${singleShoppingMeal.name}</h1><h2>${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""} · MealMuse</h2>${Object.entries(list).map(([cat,items])=>`<div class="cat">${cat}</div>${items.map(item=>`<div class="item">☐ ${item.label}${item.total?`<span class="total">(${item.total})</span>`:""}</div>`).join("")}`).join("")}</body></html>`);
+      win.document.write(`<html><head><title>${singleShoppingMeal.name} · Shopping List</title><style>body{font-family:Georgia,serif;max-width:480px;margin:40px auto;color:#222;line-height:1.7}h1{font-size:20px}h2{font-size:13px;font-weight:normal;color:#888;margin-top:0}.cat{font-weight:bold;text-transform:uppercase;font-size:11px;color:#666;margin:16px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px}.item{padding:3px 0 3px 14px;font-size:15px}.total{color:#888;font-style:italic;font-size:13px;margin-left:6px}</style></head><body><h1>🛒 ${singleShoppingMeal.name}</h1><h2>${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""} · MealMuse</h2>${Object.entries(uncheckedItems).map(([cat,items])=>`<div class="cat">${cat}</div>${items.map(item=>`<div class="item">☐ ${item.label}${item.total?`<span class="total">(${item.total})</span>`:""}</div>`).join("")}`).join("")}</body></html>`);
       win.document.close(); win.focus(); setTimeout(()=>win.print(),400);
     }
-    function handleSEmail() { window.open(`mailto:?subject=${encodeURIComponent(`🛒 ${singleShoppingMeal.name} — Shopping List`)}&body=${encodeURIComponent([`Shopping List: ${singleShoppingMeal.name}`,`${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""}`,"",...Object.entries(list).flatMap(([cat,items])=>[`── ${cat} ──`,...items.map(i=>`  • ${i.label}${i.total?` (${i.total})`:""}`),""]),].join("\n"))}`); }
-    function handleSText() { window.open(`sms:?body=${encodeURIComponent([`${singleShoppingMeal.name} Shopping List:`,...Object.values(list).flat().map(i=>`• ${i.label}${i.total?` (${i.total})`:""}`)].join("\n"))}`); }
+    function handleSEmail() {
+      const lines = [`Shopping List: ${singleShoppingMeal.name}`,`${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""}`,"",...Object.entries(uncheckedItems).flatMap(([cat,items])=>[`── ${cat} ──`,...items.map(i=>`  • ${i.label}${i.total?` (${i.total})`:""}`),""]),];
+      window.open(`mailto:?subject=${encodeURIComponent(`🛒 ${singleShoppingMeal.name} — Shopping List`)}&body=${encodeURIComponent(lines.join("\n"))}`);
+    }
+    function handleSText() {
+      const lines = [`${singleShoppingMeal.name} Shopping List:`,...Object.values(uncheckedItems).flat().map(i=>`• ${i.label}${i.total?` (${i.total})`:""}`)];
+      window.open(`sms:?body=${encodeURIComponent(lines.join("\n"))}`);
+    }
 
     return wrap(<>
       <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>← Back to Recipe</button>
