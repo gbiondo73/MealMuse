@@ -211,9 +211,11 @@ export default function DinnerApp() {
   const [screen,            setScreen]           = useState("welcome");
   const [planMode,          setPlanMode]          = useState(null);
   const [selectedDiet,      setSelectedDiet]      = useState(null);
-  const [customDiet,        setCustomDiet]        = useState("");
+  const [customDiets,       setCustomDiets]       = useState([]);
+  const [customDietInput,   setCustomDietInput]   = useState("");
   const [selectedCuisines,  setSelectedCuisines]  = useState([]);
-  const [customCuisine,     setCustomCuisine]     = useState("");
+  const [customCuisines,    setCustomCuisines]    = useState([]);
+  const [customCuisineInput,setCustomCuisineInput]= useState("");
   const [selectedAllergies, setSelectedAllergies] = useState([]);
   const [selectedMood,      setSelectedMood]      = useState(null);
   const [servings,          setServings]          = useState(2);
@@ -247,7 +249,7 @@ export default function DinnerApp() {
   const [removedKeys,  setRemovedKeys]  = useState(new Set());
 
   function resetAll() {
-    setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiet(""); setSelectedCuisines([]); setCustomCuisine(""); setSelectedAllergies([]);
+    setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiets([]); setCustomDietInput(""); setSelectedCuisines([]); setCustomCuisines([]); setCustomCuisineInput(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
     setMeals(null); setSelectedMeal(null);
@@ -283,11 +285,11 @@ export default function DinnerApp() {
   }, [screen, selectedMeal, showShopping]);
 
   const allergyLine = selectedAllergies.length ? `ALLERGIES — never include: ${selectedAllergies.map(a=>a.label).join(", ")}.` : "";
-  const cuisineLine = (selectedCuisines.length || customCuisine.trim())
-    ? `Preferred cuisines: ${[...selectedCuisines, customCuisine.trim()].filter(Boolean).join(", ")}.`
-    : "";
-  const dietLabel = customDiet.trim() || selectedDiet?.label || "No restrictions";
-  const dietDesc  = customDiet.trim() ? "" : (selectedDiet?.desc || "");
+  const allCuisines = [...selectedCuisines, ...customCuisines];
+  const cuisineLine = allCuisines.length ? `Preferred cuisines: ${allCuisines.join(", ")}.` : "";
+  const allCustomDiets = customDiets;
+  const dietLabel = allCustomDiets.length ? allCustomDiets.join(", ") : (selectedDiet?.label || "No restrictions");
+  const dietDesc  = allCustomDiets.length ? "" : (selectedDiet?.desc || "");
   const moodLabel = selectedMood?.label || "any";
 
   function isFav(meal) { return favorites.some(f=>f.name===meal.name); }
@@ -522,7 +524,17 @@ export default function DinnerApp() {
       { id:"gluten-free", label:"Gluten-Free",      emoji:"🌾", desc:"No wheat or gluten" },
       { id:"dairy-free",  label:"Dairy-Free",       emoji:"🥛", desc:"No milk products" },
     ];
-    const canProceed = selectedDiet || customDiet.trim();
+    const canProceed = selectedDiet || customDiets.length > 0;
+    function addCuisine(val) {
+      const t = val.trim();
+      if (t && !customCuisines.includes(t) && !selectedCuisines.includes(t)) setCustomCuisines(prev=>[...prev,t]);
+      setCustomCuisineInput("");
+    }
+    function addDiet(val) {
+      const t = val.trim();
+      if (t && !customDiets.includes(t)) { setCustomDiets(prev=>[...prev,t]); setSelectedDiet(null); }
+      setCustomDietInput("");
+    }
     return (
       <div style={s.bg}>
         <div style={{maxWidth:560,margin:"0 auto",padding:"20px 20px"}}>
@@ -542,11 +554,19 @@ export default function DinnerApp() {
             );})}
           </div>
           <input
-            value={customCuisine}
-            onChange={e=>setCustomCuisine(e.target.value)}
-            placeholder="Other cuisine (e.g. Thai, Greek, Japanese…)"
-            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:10,padding:"8px 12px",fontSize:13,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:14}}
+            value={customCuisineInput}
+            onChange={e=>setCustomCuisineInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addCuisine(customCuisineInput);}}}
+            placeholder="Other cuisine — type and press Enter…"
+            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:10,padding:"8px 12px",fontSize:13,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:customCuisines.length?6:14}}
           />
+          {customCuisines.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+            {customCuisines.map((c,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,210,125,0.14)",border:"1px solid rgba(255,210,125,0.3)",borderRadius:20,padding:"3px 10px",fontSize:12,color:"#ffd27d"}}>
+                {c}<span onClick={()=>setCustomCuisines(prev=>prev.filter((_,j)=>j!==i))} style={{cursor:"pointer",color:"#ff8070",fontWeight:"bold",marginLeft:2}}>×</span>
+              </div>
+            ))}
+          </div>}
 
           {/* DIET */}
           <p style={s.lbl}>🥗 Diet Style</p>
@@ -559,11 +579,19 @@ export default function DinnerApp() {
             );})}
           </div>
           <input
-            value={customDiet}
-            onChange={e=>{setCustomDiet(e.target.value);if(e.target.value.trim())setSelectedDiet(null);}}
-            placeholder="Other diet (e.g. Paleo, Whole30, Low-carb…)"
-            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:10,padding:"8px 12px",fontSize:13,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:14}}
+            value={customDietInput}
+            onChange={e=>setCustomDietInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addDiet(customDietInput);}}}
+            placeholder="Other diet — type and press Enter…"
+            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:10,padding:"8px 12px",fontSize:13,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:customDiets.length?6:14}}
           />
+          {customDiets.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+            {customDiets.map((d,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:5,background:"rgba(255,210,125,0.14)",border:"1px solid rgba(255,210,125,0.3)",borderRadius:20,padding:"3px 10px",fontSize:12,color:"#ffd27d"}}>
+                {d}<span onClick={()=>setCustomDiets(prev=>prev.filter((_,j)=>j!==i))} style={{cursor:"pointer",color:"#ff8070",fontWeight:"bold",marginLeft:2}}>×</span>
+              </div>
+            ))}
+          </div>}
 
           {/* ALLERGIES */}
           <p style={s.lbl}>⚠️ Food Allergies</p>
