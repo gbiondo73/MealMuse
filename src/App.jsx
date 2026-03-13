@@ -211,6 +211,9 @@ export default function DinnerApp() {
   const [screen,            setScreen]           = useState("welcome");
   const [planMode,          setPlanMode]          = useState(null);
   const [selectedDiet,      setSelectedDiet]      = useState(null);
+  const [customDiet,        setCustomDiet]        = useState("");
+  const [selectedCuisines,  setSelectedCuisines]  = useState([]);
+  const [customCuisine,     setCustomCuisine]     = useState("");
   const [selectedAllergies, setSelectedAllergies] = useState([]);
   const [selectedMood,      setSelectedMood]      = useState(null);
   const [servings,          setServings]          = useState(2);
@@ -244,7 +247,7 @@ export default function DinnerApp() {
   const [removedKeys,  setRemovedKeys]  = useState(new Set());
 
   function resetAll() {
-    setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setSelectedAllergies([]);
+    setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiet(""); setSelectedCuisines([]); setCustomCuisine(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
     setMeals(null); setSelectedMeal(null);
@@ -280,6 +283,12 @@ export default function DinnerApp() {
   }, [screen, selectedMeal, showShopping]);
 
   const allergyLine = selectedAllergies.length ? `ALLERGIES — never include: ${selectedAllergies.map(a=>a.label).join(", ")}.` : "";
+  const cuisineLine = (selectedCuisines.length || customCuisine.trim())
+    ? `Preferred cuisines: ${[...selectedCuisines, customCuisine.trim()].filter(Boolean).join(", ")}.`
+    : "";
+  const dietLabel = customDiet.trim() || selectedDiet?.label || "No restrictions";
+  const dietDesc  = customDiet.trim() ? "" : (selectedDiet?.desc || "");
+  const moodLabel = selectedMood?.label || "any";
 
   function isFav(meal) { return favorites.some(f=>f.name===meal.name); }
 
@@ -291,16 +300,12 @@ export default function DinnerApp() {
     setFavorites(next);
     try { localStorage.setItem("mealmuse-favorites", JSON.stringify(next)); } catch(e) {}
   }
-  const dietLabel = selectedDiet?.label || "No restrictions";
-  const dietDesc  = selectedDiet?.desc  || "";
-  const moodLabel = selectedMood?.label || "any";
-
   // ── Fetch: single night ──
   async function fetchSingleMeals() {
     setLoading(true); setError(null); setLoadingMsg("🍳 Finding recipes…");
     try {
       const existing = meals ? meals.map(m => m.name) : [];
-      const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, moodLabel, allergyLine, "", existing);
+      const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, moodLabel, allergyLine, cuisineLine ? cuisineLine + "\n" : "", existing);
       setMeals(raw);
       setScreen("single-result");
     } catch(e) { setError("Couldn't load recipes. Please try again."); }
@@ -325,7 +330,7 @@ export default function DinnerApp() {
   async function fetchWeekPlan() {
     setLoading(true); setError(null); setLoadingMsg("📅 Planning your week…");
     try {
-      const extras = "Vary proteins, cuisines, and methods across the week. Weeknights under 45 min. Add a 'day' field for each: Monday through Sunday.\n";
+      const extras = `Vary proteins, cuisines, and methods across the week. Weeknights under 45 min. Add a 'day' field for each: Monday through Sunday.\n${cuisineLine ? cuisineLine + "\n" : ""}`;
       const raw = await fetchRecipes(7, servings, dietLabel, dietDesc, moodLabel, allergyLine, extras);
       const plan = raw.map((m,i)=>({...m, day:DAYS[i], servings}));
       setWeekPlan(plan); setDayServings({}); setExcludedDays(new Set());
@@ -340,7 +345,7 @@ export default function DinnerApp() {
     const existing = weekPlan.map(m=>m.name);
     const svc = dayServings[dayIdx] ?? servings;
     try {
-      const [newMeal] = await fetchRecipes(1, svc, dietLabel, dietDesc, moodLabel, allergyLine, "", existing);
+      const [newMeal] = await fetchRecipes(1, svc, dietLabel, dietDesc, moodLabel, allergyLine, cuisineLine ? cuisineLine + "\n" : "", existing);
       if (newMeal) {
         setWeekPlan(prev=>prev.map((m,i)=>i===dayIdx?{...newMeal,day:DAYS[dayIdx],servings:svc}:m));
         setSelectedDay(dayIdx);
@@ -500,39 +505,87 @@ export default function DinnerApp() {
   // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: DIET + ALLERGIES
   // ─────────────────────────────────────────────────────────────────────────────
-  if (screen==="diet") return (
-    <div style={s.bg}>
-      <div style={{maxWidth:560,margin:"0 auto",padding:"24px 20px"}}>
-        <div style={{textAlign:"center",marginBottom:14}}>
-          <p style={{color:"#ffd27d",fontSize:11,letterSpacing:2.5,textTransform:"uppercase",marginBottom:4}}>Step 1 of 2</p>
-          <h2 style={{fontSize:22,fontWeight:"bold",margin:0}}>Dietary preferences & allergies</h2>
-        </div>
-        <p style={s.lbl}>🥗 Diet Style</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:16}}>
-          {DIETS.map(diet=>{const on=selectedDiet?.id===diet.id;return(
-            <div key={diet.id} onClick={()=>setSelectedDiet(diet)} style={{...s.card,cursor:"pointer",padding:"8px 10px",border:on?"2px solid #ffd27d":"1px solid rgba(255,200,100,0.15)",background:on?"rgba(255,210,125,0.12)":"rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:8,transition:"all 0.18s"}}>
-              <span style={{fontSize:20}}>{diet.emoji}</span>
-              <div><div style={{fontWeight:"bold",fontSize:12,color:on?"#ffd27d":"#f0e6d3"}}>{diet.label}</div><div style={{fontSize:10,color:"#9a8870"}}>{diet.desc}</div></div>
-            </div>
-          );})}
-        </div>
-        <p style={s.lbl}>⚠️ Food Allergies to Exclude</p>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
-          {ALLERGIES.map(al=>{const on=selectedAllergies.some(a=>a.id===al.id);return(
-            <div key={al.id} onClick={()=>setSelectedAllergies(prev=>on?prev.filter(a=>a.id!==al.id):[...prev,al])} style={{cursor:"pointer",padding:"7px 4px",borderRadius:10,border:on?"2px solid #ff7070":"1px solid rgba(255,100,100,0.2)",background:on?"rgba(255,80,80,0.15)":"rgba(255,255,255,0.03)",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.18s",textAlign:"center"}}>
-              <span style={{fontSize:18}}>{al.emoji}</span>
-              <div style={{fontWeight:"bold",fontSize:10,color:on?"#ff9090":"#c9b99a",lineHeight:1.2}}>{al.label}</div>
-            </div>
-          );})}
-        </div>
-        {selectedAllergies.length>0&&<div style={{marginBottom:14,padding:"8px 14px",borderRadius:10,background:"rgba(255,80,80,0.08)",border:"1px solid rgba(255,100,100,0.2)",fontSize:13,color:"#ff9090"}}>⚠️ Excluding: {selectedAllergies.map(a=>a.label).join(", ")}</div>}
-        <div style={{display:"flex",gap:12,marginTop:8}}>
-          <button onClick={()=>setScreen("welcome")} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
-          <button onClick={()=>selectedDiet&&setScreen("mood")} disabled={!selectedDiet} style={{...s.gold,flex:2,padding:"13px",fontSize:15,opacity:selectedDiet?1:0.35,cursor:selectedDiet?"pointer":"not-allowed"}}>Next →</button>
+  if (screen==="diet") {
+    const CUISINES = [
+      {label:"Italian",    emoji:"🍝"},
+      {label:"Mexican",    emoji:"🌮"},
+      {label:"Asian",      emoji:"🍜"},
+      {label:"American",   emoji:"🍔"},
+      {label:"Mediterranean", emoji:"🫒"},
+      {label:"Indian",     emoji:"🍛"},
+    ];
+    const TOP_DIETS = [
+      { id:"none",        label:"No Restrictions", emoji:"🍽️", desc:"I eat everything" },
+      { id:"vegetarian",  label:"Vegetarian",       emoji:"🥦", desc:"No meat or fish" },
+      { id:"vegan",       label:"Vegan",            emoji:"🌱", desc:"No animal products" },
+      { id:"keto",        label:"Keto",             emoji:"🥩", desc:"Low-carb, high-fat" },
+      { id:"gluten-free", label:"Gluten-Free",      emoji:"🌾", desc:"No wheat or gluten" },
+      { id:"dairy-free",  label:"Dairy-Free",       emoji:"🥛", desc:"No milk products" },
+    ];
+    const canProceed = selectedDiet || customDiet.trim();
+    return (
+      <div style={s.bg}>
+        <div style={{maxWidth:560,margin:"0 auto",padding:"20px 20px"}}>
+          <div style={{textAlign:"center",marginBottom:12}}>
+            <p style={{color:"#ffd27d",fontSize:11,letterSpacing:2.5,textTransform:"uppercase",marginBottom:4}}>Step 1 of 2</p>
+            <h2 style={{fontSize:22,fontWeight:"bold",margin:0}}>Your preferences</h2>
+          </div>
+
+          {/* CUISINE */}
+          <p style={s.lbl}>🌍 Cuisine Style</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:8}}>
+            {CUISINES.map(c=>{const on=selectedCuisines.includes(c.label);return(
+              <div key={c.label} onClick={()=>setSelectedCuisines(prev=>on?prev.filter(x=>x!==c.label):[...prev,c.label])} style={{cursor:"pointer",padding:"8px 6px",borderRadius:12,border:on?"2px solid #ffd27d":"1px solid rgba(255,200,100,0.2)",background:on?"rgba(255,210,125,0.14)":"rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:7,transition:"all 0.18s"}}>
+                <span style={{fontSize:20}}>{c.emoji}</span>
+                <span style={{fontSize:12,fontWeight:on?"bold":"normal",color:on?"#ffd27d":"#d0c0a8"}}>{c.label}</span>
+              </div>
+            );})}
+          </div>
+          <input
+            value={customCuisine}
+            onChange={e=>setCustomCuisine(e.target.value)}
+            placeholder="Other cuisine (e.g. Thai, Greek, Japanese…)"
+            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:10,padding:"8px 12px",fontSize:13,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:14}}
+          />
+
+          {/* DIET */}
+          <p style={s.lbl}>🥗 Diet Style</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginBottom:8}}>
+            {TOP_DIETS.map(diet=>{const on=selectedDiet?.id===diet.id;return(
+              <div key={diet.id} onClick={()=>setSelectedDiet(on?null:diet)} style={{cursor:"pointer",padding:"8px 6px",borderRadius:12,border:on?"2px solid #ffd27d":"1px solid rgba(255,200,100,0.15)",background:on?"rgba(255,210,125,0.14)":"rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:7,transition:"all 0.18s"}}>
+                <span style={{fontSize:20}}>{diet.emoji}</span>
+                <span style={{fontSize:12,fontWeight:on?"bold":"normal",color:on?"#ffd27d":"#d0c0a8"}}>{diet.label}</span>
+              </div>
+            );})}
+          </div>
+          <input
+            value={customDiet}
+            onChange={e=>{setCustomDiet(e.target.value);if(e.target.value.trim())setSelectedDiet(null);}}
+            placeholder="Other diet (e.g. Paleo, Whole30, Low-carb…)"
+            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:10,padding:"8px 12px",fontSize:13,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:14}}
+          />
+
+          {/* ALLERGIES */}
+          <p style={s.lbl}>⚠️ Food Allergies</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
+            {ALLERGIES.map(al=>{const on=selectedAllergies.some(a=>a.id===al.id);return(
+              <div key={al.id} onClick={()=>setSelectedAllergies(prev=>on?prev.filter(a=>a.id!==al.id):[...prev,al])} style={{cursor:"pointer",padding:"7px 4px",borderRadius:10,border:on?"2px solid #ff7070":"1px solid rgba(255,100,100,0.2)",background:on?"rgba(255,80,80,0.15)":"rgba(255,255,255,0.03)",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.18s",textAlign:"center"}}>
+                <span style={{fontSize:18}}>{al.emoji}</span>
+                <div style={{fontWeight:"bold",fontSize:10,color:on?"#ff9090":"#c9b99a",lineHeight:1.2}}>{al.label}</div>
+              </div>
+            );})}
+          </div>
+
+          {selectedAllergies.length>0&&<div style={{marginBottom:10,padding:"6px 12px",borderRadius:10,background:"rgba(255,80,80,0.08)",border:"1px solid rgba(255,100,100,0.2)",fontSize:12,color:"#ff9090"}}>⚠️ Excluding: {selectedAllergies.map(a=>a.label).join(", ")}</div>}
+
+          <div style={{display:"flex",gap:12,marginTop:6}}>
+            <button onClick={()=>setScreen("welcome")} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
+            <button onClick={()=>canProceed&&setScreen("mood")} disabled={!canProceed} style={{...s.gold,flex:2,padding:"13px",fontSize:15,opacity:canProceed?1:0.35,cursor:canProceed?"pointer":"not-allowed"}}>Next →</button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: MOOD + SERVINGS
