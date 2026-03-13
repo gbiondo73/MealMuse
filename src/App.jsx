@@ -171,8 +171,8 @@ function LoadingScreen({msg}) {
       setTimeout(() => {
         setFactIdx(i => (i + 1) % FUN_FACTS.length);
         setFade(true);
-      }, 400);
-    }, 5000);
+      }, 600);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -192,9 +192,9 @@ function LoadingScreen({msg}) {
         <p style={{color:"#ffd27d",fontSize:18,fontWeight:"bold",margin:"0 0 6px"}}>{msg||"Finding recipes…"}</p>
         <p style={{color:"#9a8070",fontSize:13,margin:"0 0 32px"}}>This usually takes 5–10 seconds</p>
 
-        <div style={{maxWidth:360,padding:"20px 24px",borderRadius:16,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,210,125,0.15)",transition:"opacity 0.4s",opacity:fade?1:0}}>
-          <p style={{color:"#ffd27d",fontSize:11,letterSpacing:2,textTransform:"uppercase",margin:"0 0 10px"}}>Did you know?</p>
-          <p style={{color:"#c9b99a",fontSize:14,lineHeight:1.7,margin:0}}>{FUN_FACTS[factIdx]}</p>
+        <div style={{maxWidth:380,padding:"24px 28px",borderRadius:16,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,210,125,0.15)",transition:"opacity 0.6s ease-in-out",opacity:fade?1:0}}>
+          <p style={{color:"#ffd27d",fontSize:12,letterSpacing:2,textTransform:"uppercase",margin:"0 0 12px"}}>Did you know?</p>
+          <p style={{color:"#c9b99a",fontSize:17,lineHeight:1.75,margin:0}}>{FUN_FACTS[factIdx]}</p>
         </div>
 
         <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}`}</style>
