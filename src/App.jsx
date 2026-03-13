@@ -229,6 +229,8 @@ export default function DinnerApp() {
   const [meals,        setMeals]        = useState(null);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [favorites,    setFavorites]    = useState([]);
+  const [searchQuery,  setSearchQuery]  = useState("");
+  const [singleShoppingMeal, setSingleShoppingMeal] = useState(null);
 
   useState(() => {
     try {
@@ -252,7 +254,7 @@ export default function DinnerApp() {
     setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiets([]); setCustomDietInput(""); setSelectedCuisines([]); setCustomCuisines([]); setCustomCuisineInput(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
-    setMeals(null); setSelectedMeal(null);
+    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null);
     setWeekPlan(null); setDayServings({}); setExcludedDays(new Set()); setReplacingDay(null); setRescalingDay(null);
     setCalView("list"); setSelectedDay(null);
     setShowShopping(false); setCheckedItems({}); setRemovedKeys(new Set());
@@ -266,8 +268,8 @@ export default function DinnerApp() {
 
   useEffect(() => {
     function handlePop() {
-      // When browser back is pressed, go back one step in app logic
       if (showShopping) { setShowShopping(false); return; }
+      if (singleShoppingMeal) { setSingleShoppingMeal(null); return; }
       if (selectedMeal) { setSelectedMeal(null); return; }
       const prev = {
         "week-result": "mood",
@@ -276,13 +278,14 @@ export default function DinnerApp() {
         "diet": "welcome",
         "pantry": "welcome",
         "favorites": "welcome",
+        "search": "welcome",
       };
-      if (screen === "welcome") return; // already at home, let browser handle it
+      if (screen === "welcome") return;
       setScreen(prev[screen] || "welcome");
     }
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
-  }, [screen, selectedMeal, showShopping]);
+  }, [screen, selectedMeal, showShopping, singleShoppingMeal]);
 
   const allergyLine = selectedAllergies.length ? `ALLERGIES — never include: ${selectedAllergies.map(a=>a.label).join(", ")}.` : "";
   const allCuisines = [...selectedCuisines, ...customCuisines];
@@ -322,6 +325,19 @@ export default function DinnerApp() {
       const randomSeed = Math.floor(Math.random() * 10000);
       const extras = `Ingredients on hand: ${pantryItems.join(", ")}. Build recipes primarily around these. Common spices & oil assumed. Be creative and suggest DIFFERENT recipes each time (seed: ${randomSeed}).\n`;
       const raw = await fetchRecipes(3, servings, dietLabel, dietDesc, "any", allergyLine, extras, existing);
+      setMeals(raw);
+      setScreen("single-result");
+    } catch(e) { setError("Couldn't find recipes. Please try again."); }
+    setLoading(false); setLoadingMsg("");
+  }
+
+  // ── Fetch: recipe search ──
+  async function fetchSearchRecipes() {
+    if (!searchQuery.trim()) return;
+    setLoading(true); setError(null); setLoadingMsg(`🔍 Finding ${searchQuery} recipes…`);
+    try {
+      const extras = `The user specifically wants to make: "${searchQuery}". Find 3 great versions of this dish — vary the style (e.g. classic, quick, elevated). ${allergyLine}\n`;
+      const raw = await fetchRecipes(3, servings, "No restrictions", "", "any", "", extras);
       setMeals(raw);
       setScreen("single-result");
     } catch(e) { setError("Couldn't find recipes. Please try again."); }
@@ -402,6 +418,25 @@ export default function DinnerApp() {
     return cat;
   }
 
+  function categorizeMealIngredients(ingredients) {
+    const cat={}; GROCERY_CATS.forEach(c=>cat[c]=[]);
+    (ingredients||[]).forEach(item=>{
+      const l=item.toLowerCase();
+      if(/chicken|beef|pork|lamb|shrimp|salmon|fish|turkey|sausage|bacon/.test(l)) cat["Meat & Seafood"].push(item);
+      else if(/milk|cream|cheese|butter|egg|yogurt|parmesan|mozzarella/.test(l)) cat["Dairy & Eggs"].push(item);
+      else if(/garlic|onion|tomato|pepper|spinach|lettuce|carrot|celery|zucchini|broccoli|mushroom|lemon|lime|potato|parsley|basil|cilantro|ginger|avocado|kale/.test(l)) cat["Produce"].push(item);
+      else if(/pasta|rice|flour|bread|oat|lentil|bean|quinoa|noodle/.test(l)) cat["Pantry & Dry Goods"].push(item);
+      else if(/\bcan\b|jar|sauce|broth|stock|tomato paste|coconut milk|salsa/.test(l)) cat["Canned & Jarred"].push(item);
+      else if(/salt|pepper|paprika|cumin|oregano|thyme|cinnamon|chili|turmeric|curry|seasoning|spice|cayenne|bay leaf|red pepper flakes/.test(l)) cat["Spices & Seasonings"].push(item);
+      else if(/oil|vinegar|soy sauce|hot sauce|mustard|honey|mayo|ketchup/.test(l)) cat["Oils & Condiments"].push(item);
+      else if(/frozen/.test(l)) cat["Frozen"].push(item);
+      else cat["Other"].push(item);
+    });
+    GROCERY_CATS.forEach(k=>{if(!cat[k].length)delete cat[k];});
+    Object.keys(cat).forEach(k=>{cat[k]=aggregateItems(cat[k]);});
+    return cat;
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: WELCOME
   // ─────────────────────────────────────────────────────────────────────────────
@@ -420,12 +455,13 @@ export default function DinnerApp() {
         <p style={{...s.lbl,textAlign:"center",marginBottom:14}}>How would you like to plan?</p>
         <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:28}}>
           {[
-            {mode:"single",icon:"🍽️",title:"Tonight's Dinner",    sub:"Browse 3 real recipe options for tonight"},
-            {mode:"week",  icon:"📅",title:"Full Week Plan",       sub:"7 real dinners + shopping list"},
-            {mode:"pantry",icon:"🧑‍🍳",title:"Use What I Have",     sub:"Find recipes around your ingredients"},
-            {mode:"favorites",icon:"♥",title:"My Saved Recipes",   sub:`${favorites.length} recipe${favorites.length!==1?"s":""} saved`},
+            {mode:"single",   icon:"🍽️", title:"Tonight's Dinner",   sub:"Browse 3 recipe options for tonight"},
+            {mode:"week",     icon:"📅", title:"Full Week Plan",      sub:"7 dinners + shopping list"},
+            {mode:"pantry",   icon:"🧑‍🍳", title:"Use What I Have",    sub:"Find recipes around your ingredients"},
+            {mode:"search",   icon:"🔍", title:"Search a Recipe",     sub:"Find great recipes for a specific dish"},
+            {mode:"favorites",icon:"♥",  title:"My Saved Recipes",    sub:`${favorites.length} recipe${favorites.length!==1?"s":""} saved`},
           ].map(opt=>(
-            <div key={opt.mode} onClick={()=>{setPlanMode(opt.mode);setScreen(opt.mode==="pantry"?"pantry":opt.mode==="favorites"?"favorites":"diet");}} style={{
+            <div key={opt.mode} onClick={()=>{setPlanMode(opt.mode);setScreen(opt.mode==="pantry"?"pantry":opt.mode==="favorites"?"favorites":opt.mode==="search"?"search":"diet");}} style={{
               ...s.card,cursor:"pointer",padding:"18px 22px",textAlign:"left",
               display:"flex",alignItems:"center",gap:16,transition:"all 0.2s",
               border:"1px solid rgba(255,200,100,0.25)",
@@ -444,6 +480,57 @@ export default function DinnerApp() {
         </div>
         <div style={{display:"flex",justifyContent:"center",flexWrap:"wrap",gap:"8px 18px",fontSize:13,color:"#7a6a5a"}}>
           <span>📷 Real photos</span><span>🎥 Video links</span><span>🛒 Shopping list</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SCREEN: SEARCH
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (screen==="search") return (
+    <div style={s.bg}>
+      <div style={{maxWidth:500,margin:"0 auto",padding:"60px 24px"}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontSize:52,marginBottom:10}}>🔍</div>
+          <h2 style={{fontSize:26,fontWeight:"bold",margin:"0 0 8px",color:"#ffd27d"}}>Search a Recipe</h2>
+          <p style={{color:"#a09080",fontSize:14,margin:0}}>Type any dish and get 3 great recipes for it</p>
+        </div>
+        <div style={{...s.card,padding:"20px"}}>
+          <input
+            value={searchQuery}
+            onChange={e=>setSearchQuery(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&fetchSearchRecipes()}
+            placeholder="e.g. Short ribs, Chicken tikka masala, Beef tacos…"
+            autoFocus
+            style={{width:"100%",boxSizing:"border-box",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,200,100,0.3)",borderRadius:12,padding:"14px 16px",fontSize:16,color:"#f0e6d3",outline:"none",fontFamily:"Georgia,serif",marginBottom:14}}
+          />
+          <div style={{...s.card,padding:"12px 16px",marginBottom:14,background:"rgba(255,255,255,0.03)"}}>
+            <p style={{...s.lbl,marginBottom:8}}>🍽️ Servings</p>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {SERVINGS_OPTIONS.map(n=>(
+                <button key={n} onClick={()=>setServings(n)} style={{padding:"6px 14px",borderRadius:30,fontSize:13,cursor:"pointer",border:servings===n?"2px solid #ffd27d":"1px solid rgba(255,200,100,0.2)",background:servings===n?"rgba(255,210,125,0.15)":"transparent",color:servings===n?"#ffd27d":"#c9b99a",fontWeight:servings===n?"bold":"normal",fontFamily:"'Georgia',serif"}}>
+                  {n} {n===1?"person":"people"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {error&&<p style={{color:"#ff9090",textAlign:"center",marginBottom:12,fontSize:14}}>⚠️ {error}</p>}
+          {loading&&<p style={{color:"#ffd27d",textAlign:"center",marginBottom:12,fontSize:14}}>{loadingMsg}</p>}
+          <div style={{display:"flex",gap:12}}>
+            <button onClick={()=>setScreen("welcome")} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
+            <button onClick={fetchSearchRecipes} disabled={loading||!searchQuery.trim()} style={{...s.gold,flex:2,padding:"13px",fontSize:15,opacity:(loading||!searchQuery.trim())?0.4:1,cursor:(loading||!searchQuery.trim())?"not-allowed":"pointer"}}>
+              {loading?loadingMsg:"Find Recipes 🔍"}
+            </button>
+          </div>
+        </div>
+        <div style={{marginTop:16,textAlign:"center"}}>
+          <p style={{color:"#6a5a4a",fontSize:13,marginBottom:8}}>Popular searches:</p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center"}}>
+            {["Short Ribs","Beef Bourguignon","Chicken Tikka Masala","Lobster Bisque","Beef Wellington","Pad Thai","Shakshuka","Coq au Vin"].map(q=>(
+              <button key={q} onClick={()=>setSearchQuery(q)} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,200,100,0.2)",borderRadius:20,padding:"5px 12px",fontSize:12,color:"#c9b99a",cursor:"pointer",fontFamily:"Georgia,serif"}}>{q}</button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -781,11 +868,73 @@ export default function DinnerApp() {
               color: isFav(selectedMeal) ? "#ff7099" : "#a09080",
             }}
           >{isFav(selectedMeal) ? "♥ Saved!" : "♡ Save Recipe"}</button>
-          {screen==="week-result"&&<button onClick={()=>{setSelectedMeal(null);setShowShopping(true);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>}
+          {screen==="week-result"
+            ? <button onClick={()=>{setSelectedMeal(null);setShowShopping(true);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
+            : <button onClick={()=>{setSingleShoppingMeal(selectedMeal);setSelectedMeal(null);}} style={{...s.gold,flex:1,padding:"12px",fontSize:14}}>🛒 Shopping List</button>
+          }
         </div>
       }
     />
   );
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SCREEN: SINGLE MEAL SHOPPING LIST
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (singleShoppingMeal) {
+    const list = categorizeMealIngredients(singleShoppingMeal.ingredients);
+    const [sChecked, setSChecked] = useState({});
+    const allItems = Object.values(list).flat();
+    const checkedCount = Object.values(sChecked).filter(Boolean).length;
+
+    function handleSPrint() {
+      const win = window.open("","_blank");
+      win.document.write(`<html><head><title>${singleShoppingMeal.name} · Shopping List</title><style>body{font-family:Georgia,serif;max-width:480px;margin:40px auto;color:#222;line-height:1.7}h1{font-size:20px}h2{font-size:13px;font-weight:normal;color:#888;margin-top:0}.cat{font-weight:bold;text-transform:uppercase;font-size:11px;color:#666;margin:16px 0 5px;border-bottom:1px solid #eee;padding-bottom:3px}.item{padding:3px 0 3px 14px;font-size:15px}.total{color:#888;font-style:italic;font-size:13px;margin-left:6px}</style></head><body><h1>🛒 ${singleShoppingMeal.name}</h1><h2>${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""} · MealMuse</h2>${Object.entries(list).map(([cat,items])=>`<div class="cat">${cat}</div>${items.map(item=>`<div class="item">☐ ${item.label}${item.total?`<span class="total">(${item.total})</span>`:""}</div>`).join("")}`).join("")}</body></html>`);
+      win.document.close(); win.focus(); setTimeout(()=>win.print(),400);
+    }
+    function handleSEmail() { window.open(`mailto:?subject=${encodeURIComponent(`🛒 ${singleShoppingMeal.name} — Shopping List`)}&body=${encodeURIComponent([`Shopping List: ${singleShoppingMeal.name}`,`${singleShoppingMeal.servings} serving${singleShoppingMeal.servings!==1?"s":""}`,"",...Object.entries(list).flatMap(([cat,items])=>[`── ${cat} ──`,...items.map(i=>`  • ${i.label}${i.total?` (${i.total})`:""}`),""]),].join("\n"))}`); }
+    function handleSText() { window.open(`sms:?body=${encodeURIComponent([`${singleShoppingMeal.name} Shopping List:`,...Object.values(list).flat().map(i=>`• ${i.label}${i.total?` (${i.total})`:""}`)].join("\n"))}`); }
+
+    return wrap(<>
+      <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>← Back to Recipe</button>
+      <div style={{textAlign:"center",marginBottom:18}}>
+        <h2 style={{fontSize:24,fontWeight:"bold",margin:"0 0 4px"}}>🛒 Shopping List</h2>
+        <p style={{color:"#9a8070",fontSize:14,margin:0}}>{singleShoppingMeal.emoji} {singleShoppingMeal.name} · {singleShoppingMeal.servings} serving{singleShoppingMeal.servings!==1?"s":""}</p>
+        {allItems.length>0&&<div style={{marginTop:12,...s.card,display:"inline-block",padding:"12px 20px",minWidth:200}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:13}}><span style={{color:"#9a8070"}}>Items checked</span><span><span style={{color:"#ffd27d",fontWeight:"bold"}}>{checkedCount}</span><span style={{color:"#6a5a4a"}}> / {allItems.length}</span></span></div>
+          <div style={{background:"rgba(255,255,255,0.08)",borderRadius:10,height:8,overflow:"hidden"}}><div style={{height:"100%",borderRadius:10,transition:"width 0.4s",background:"linear-gradient(90deg,#ffd27d,#ff8c42)",width:`${allItems.length>0?(checkedCount/allItems.length)*100:0}%`}}/></div>
+        </div>}
+      </div>
+
+      {Object.entries(list).map(([cat,items])=>(
+        <div key={cat} style={{...s.card,marginBottom:10}}>
+          <p style={{...s.lbl,marginBottom:10}}>{CAT_EMOJI[cat]||"🛒"} {cat}</p>
+          {items.map((item,idx)=>{const key=`${cat}-${idx}`;const done=sChecked[key];return(
+            <div key={key} onClick={()=>setSChecked(prev=>({...prev,[key]:!prev[key]}))} style={{display:"flex",alignItems:"center",gap:11,padding:"7px 0",cursor:"pointer",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+              <div style={{width:19,height:19,borderRadius:5,flexShrink:0,border:done?"none":"2px solid rgba(255,200,100,0.4)",background:done?"linear-gradient(135deg,#ffd27d,#ff8c42)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {done&&<span style={{color:"#1a0a2e",fontSize:11,fontWeight:"bold"}}>✓</span>}
+              </div>
+              <span style={{flex:1,fontSize:14,color:done?"#6a5a4a":"#d0c0a8",textDecoration:done?"line-through":"none"}}>{item.label}</span>
+              {item.total&&<span style={{fontSize:12,color:done?"#5a4a3a":"#ffd27d",fontStyle:"italic",opacity:done?0.5:1}}>({item.total})</span>}
+            </div>
+          );})}
+        </div>
+      ))}
+
+      <div style={{...s.card,marginBottom:12,padding:"12px 16px",background:"rgba(255,255,255,0.03)"}}>
+        <p style={{...s.lbl,marginBottom:10}}>📤 Share or Print</p>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={handleSPrint} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.18)",color:"#f0e6d3",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>🖨️ Print</button>
+          <button onClick={handleSEmail} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(100,160,255,0.1)",border:"1px solid rgba(100,160,255,0.3)",color:"#a0c0ff",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>✉️ Email</button>
+          <button onClick={handleSText} style={{flex:1,padding:"9px 8px",borderRadius:30,cursor:"pointer",background:"rgba(100,220,100,0.1)",border:"1px solid rgba(100,220,100,0.3)",color:"#90d090",fontFamily:"'Georgia',serif",fontSize:14,fontWeight:"bold"}}>💬 Text</button>
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:12}}>
+        <button onClick={()=>setSingleShoppingMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back to Recipe</button>
+        <button onClick={resetAll} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>🏠 Start Over</button>
+      </div>
+    </>);
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SCREEN: SHOPPING LIST
