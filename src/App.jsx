@@ -502,31 +502,26 @@ export default function DinnerApp() {
   // ─────────────────────────────────────────────────────────────────────────────
   if (screen==="diet") return (
     <div style={s.bg}>
-      <div style={{maxWidth:560,margin:"0 auto",padding:"40px 20px"}}>
-        <div style={{textAlign:"center",marginBottom:22}}>
-          <p style={{color:"#ffd27d",fontSize:11,letterSpacing:2.5,textTransform:"uppercase",marginBottom:6}}>Step 1 of 2</p>
-          <h2 style={{fontSize:26,fontWeight:"bold",margin:0}}>Dietary preferences & allergies</h2>
-          <p style={{color:"#a09080",marginTop:8}}>Used to filter TheMealDB results</p>
+      <div style={{maxWidth:560,margin:"0 auto",padding:"24px 20px"}}>
+        <div style={{textAlign:"center",marginBottom:14}}>
+          <p style={{color:"#ffd27d",fontSize:11,letterSpacing:2.5,textTransform:"uppercase",marginBottom:4}}>Step 1 of 2</p>
+          <h2 style={{fontSize:22,fontWeight:"bold",margin:0}}>Dietary preferences & allergies</h2>
         </div>
         <p style={s.lbl}>🥗 Diet Style</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:22}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:16}}>
           {DIETS.map(diet=>{const on=selectedDiet?.id===diet.id;return(
-            <div key={diet.id} onClick={()=>setSelectedDiet(diet)} style={{...s.card,cursor:"pointer",padding:"11px 13px",border:on?"2px solid #ffd27d":"1px solid rgba(255,200,100,0.15)",background:on?"rgba(255,210,125,0.12)":"rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:11,transition:"all 0.18s"}}>
-              <span style={{fontSize:22}}>{diet.emoji}</span>
-              <div><div style={{fontWeight:"bold",fontSize:13,color:on?"#ffd27d":"#f0e6d3"}}>{diet.label}</div><div style={{fontSize:11,color:"#9a8870"}}>{diet.desc}</div></div>
+            <div key={diet.id} onClick={()=>setSelectedDiet(diet)} style={{...s.card,cursor:"pointer",padding:"8px 10px",border:on?"2px solid #ffd27d":"1px solid rgba(255,200,100,0.15)",background:on?"rgba(255,210,125,0.12)":"rgba(255,255,255,0.04)",display:"flex",alignItems:"center",gap:8,transition:"all 0.18s"}}>
+              <span style={{fontSize:20}}>{diet.emoji}</span>
+              <div><div style={{fontWeight:"bold",fontSize:12,color:on?"#ffd27d":"#f0e6d3"}}>{diet.label}</div><div style={{fontSize:10,color:"#9a8870"}}>{diet.desc}</div></div>
             </div>
           );})}
         </div>
         <p style={s.lbl}>⚠️ Food Allergies to Exclude</p>
-        <p style={{color:"#9a8070",fontSize:13,marginBottom:10,marginTop:-6}}>We'll filter out any recipes containing these</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:10}}>
           {ALLERGIES.map(al=>{const on=selectedAllergies.some(a=>a.id===al.id);return(
-            <div key={al.id} onClick={()=>setSelectedAllergies(prev=>on?prev.filter(a=>a.id!==al.id):[...prev,al])} style={{...s.card,cursor:"pointer",padding:"9px 12px",border:on?"2px solid #ff7070":"1px solid rgba(255,100,100,0.15)",background:on?"rgba(255,80,80,0.12)":"rgba(255,255,255,0.03)",display:"flex",alignItems:"center",gap:9,transition:"all 0.18s"}}>
-              <div style={{width:17,height:17,borderRadius:4,flexShrink:0,border:on?"none":"2px solid rgba(255,100,100,0.35)",background:on?"linear-gradient(135deg,#ff7070,#ff4040)":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {on&&<span style={{color:"#fff",fontSize:10,fontWeight:"bold"}}>✓</span>}
-              </div>
-              <span style={{fontSize:17}}>{al.emoji}</span>
-              <div><div style={{fontWeight:"bold",fontSize:12,color:on?"#ff9090":"#f0e6d3"}}>{al.label}</div><div style={{fontSize:11,color:"#7a6a5a"}}>{al.desc}</div></div>
+            <div key={al.id} onClick={()=>setSelectedAllergies(prev=>on?prev.filter(a=>a.id!==al.id):[...prev,al])} style={{cursor:"pointer",padding:"7px 4px",borderRadius:10,border:on?"2px solid #ff7070":"1px solid rgba(255,100,100,0.2)",background:on?"rgba(255,80,80,0.15)":"rgba(255,255,255,0.03)",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.18s",textAlign:"center"}}>
+              <span style={{fontSize:18}}>{al.emoji}</span>
+              <div style={{fontWeight:"bold",fontSize:10,color:on?"#ff9090":"#c9b99a",lineHeight:1.2}}>{al.label}</div>
             </div>
           );})}
         </div>
