@@ -214,8 +214,55 @@ function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,a
   const [sidesLoading,setSidesLoading]= useState(false);
   const [sideRecipes, setSideRecipes] = useState({}); // name -> full recipe
   const [loadingSide, setLoadingSide] = useState(null);
+  const [viewingSide, setViewingSide] = useState(null); // side recipe being viewed
 
   const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+
+  // If viewing a side recipe, show it inline
+  if (viewingSide) {
+    const sr = sideRecipes[viewingSide];
+    return (
+      <div>
+        <button onClick={()=>setViewingSide(null)} style={{...s.ghost,padding:"9px 20px",fontSize:13,marginBottom:18}}>← Back to {meal.name}</button>
+        <div style={{...s.card,marginBottom:12,background:"rgba(100,200,120,0.06)",border:"1px solid rgba(100,200,120,0.25)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+            <span style={{fontSize:36}}>{sr.emoji||"🍽️"}</span>
+            <div>
+              <h3 style={{margin:0,fontSize:20,color:"#90d090"}}>{sr.name}</h3>
+              <p style={{margin:"3px 0 0",color:"#9a8070",fontSize:13}}>⏱ {sr.time} · 🍽️ {sr.servings} serving{sr.servings!==1?"s":""} · Side dish for {meal.name}</p>
+            </div>
+          </div>
+        </div>
+        <div style={{...s.card,marginBottom:12}}>
+          <p style={s.lbl}>📋 Ingredients</p>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"9px 20px"}}>
+            {sr.ingredients?.map((ing,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,fontSize:14,color:"#d0c0a8",lineHeight:1.4}}>
+                <span style={{color:"#90d090",flexShrink:0,marginTop:1}}>✓</span><span>{ing}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{...s.card,marginBottom:12}}>
+          <p style={s.lbl}>👨‍🍳 Instructions</p>
+          {sr.steps?.map((step,i)=>(
+            <div key={i} style={{display:"flex",gap:14,marginBottom:14,alignItems:"flex-start"}}>
+              <span style={{background:"linear-gradient(135deg,#90d090,#50a050)",color:"#1a0a2e",borderRadius:"50%",width:26,height:26,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:"bold",flexShrink:0,marginTop:1}}>{i+1}</span>
+              <p style={{margin:0,color:"#c9b99a",lineHeight:1.7,fontSize:15}}>{step}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{...s.card,background:"rgba(255,50,50,0.06)",border:"1px solid rgba(255,80,80,0.2)",marginBottom:12}}>
+          <p style={{...s.lbl,color:"#ff8070",marginBottom:10}}>▶ Watch It Being Made</p>
+          <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`how to make ${sr.name} recipe`)}`} target="_blank" rel="noopener noreferrer"
+            style={{display:"block",background:"linear-gradient(135deg,#ff4e42,#cc1a10)",borderRadius:50,padding:"10px 16px",fontWeight:"bold",color:"#fff",fontFamily:"'Georgia',serif",fontSize:14,textAlign:"center",textDecoration:"none",boxShadow:"0 3px 12px rgba(200,30,20,0.4)"}}>
+            ▶ Find Video for {sr.name}
+          </a>
+        </div>
+        <button onClick={()=>setViewingSide(null)} style={{...s.ghost,width:"100%",padding:"12px",fontSize:14}}>← Back to {meal.name}</button>
+      </div>
+    );
+  }
 
   async function fetchSidesAndWine() {
     setSidesLoading(true);
@@ -403,22 +450,31 @@ Give a concise, practical answer about ingredient substitutions or cooking quest
           {sidesData.sides?.map((side,i)=>{
             const added = addedSides.includes(side.name) || sideRecipes[side.name];
             const isLoading = loadingSide === side.name;
+            const hasRecipe = !!sideRecipes[side.name];
             return (
-              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-                <span style={{fontSize:22,flexShrink:0}}>{side.emoji}</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:"bold",fontSize:14,color:"#d0c0a8"}}>{side.name}</div>
-                  <div style={{fontSize:12,color:"#8a7a6a",lineHeight:1.4}}>{side.description}</div>
+              <div key={i} style={{padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:22,flexShrink:0}}>{side.emoji}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:"bold",fontSize:14,color:"#d0c0a8"}}>{side.name}</div>
+                    <div style={{fontSize:12,color:"#8a7a6a",lineHeight:1.4}}>{side.description}</div>
+                  </div>
+                  <button
+                    onClick={()=>!added&&!isLoading&&addSideRecipe(side)}
+                    disabled={!!added||isLoading}
+                    style={{flexShrink:0,padding:"6px 12px",borderRadius:20,fontSize:12,fontWeight:"bold",cursor:added?"default":"pointer",fontFamily:"Georgia,serif",border:"none",
+                      background:added?"rgba(100,200,120,0.2)":isLoading?"rgba(255,210,125,0.1)":"linear-gradient(135deg,#90d090,#50a050)",
+                      color:added?"#90d090":isLoading?"#ffd27d":"#1a0a2e",
+                      opacity:isLoading?0.7:1
+                    }}
+                  >{isLoading?"Adding…":added?"✓ Added":"+ Add"}</button>
                 </div>
-                <button
-                  onClick={()=>addSideRecipe(side)}
-                  disabled={!!added||isLoading}
-                  style={{flexShrink:0,padding:"6px 12px",borderRadius:20,fontSize:12,fontWeight:"bold",cursor:added?"default":"pointer",fontFamily:"Georgia,serif",border:"none",
-                    background:added?"rgba(100,200,120,0.2)":isLoading?"rgba(255,210,125,0.1)":"linear-gradient(135deg,#90d090,#50a050)",
-                    color:added?"#90d090":isLoading?"#ffd27d":"#1a0a2e",
-                    opacity:isLoading?0.7:1
-                  }}
-                >{isLoading?"Adding…":added?"✓ Added":"+ Add"}</button>
+                {hasRecipe && (
+                  <button
+                    onClick={()=>setViewingSide(side.name)}
+                    style={{marginTop:8,marginLeft:32,background:"none",border:"1px solid rgba(100,200,120,0.35)",borderRadius:20,padding:"4px 14px",fontSize:12,color:"#90d090",cursor:"pointer",fontFamily:"Georgia,serif"}}
+                  >📖 View Recipe →</button>
+                )}
               </div>
             );
           })}
