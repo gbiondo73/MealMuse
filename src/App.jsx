@@ -204,7 +204,7 @@ function LoadingScreen({msg}) {
 }
 
 
-function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,addedSides=[],sideRecipes={},onSideRecipeFetched}) {
+function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,addedSides=[],sideRecipes={},onSideRecipeFetched,viewingSide,setViewingSide}) {
   const [subQuery,    setSubQuery]    = useState("");
   const [subAnswer,   setSubAnswer]   = useState(null);
   const [subLoading,  setSubLoading]  = useState(false);
@@ -213,7 +213,6 @@ function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,a
   const [sidesData,   setSidesData]   = useState(null);
   const [sidesLoading,setSidesLoading]= useState(false);
   const [loadingSide, setLoadingSide] = useState(null);
-  const [viewingSide, setViewingSide] = useState(null);
 
   const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 
@@ -556,6 +555,7 @@ export default function DinnerApp() {
   const [sChecked,           setSChecked]           = useState({});
   const [addedSides,         setAddedSides]         = useState([]); // [{name, ingredients, ...}]
   const [sideRecipes,        setSideRecipes]        = useState({}); // name -> full recipe
+  const [viewingSide,        setViewingSide]        = useState(null);
 
   useState(() => {
     try {
@@ -579,7 +579,7 @@ export default function DinnerApp() {
     setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiets([]); setCustomDietInput(""); setSelectedCuisines([]); setCustomCuisines([]); setCustomCuisineInput(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
-    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({}); setAddedSides([]); setSideRecipes({});
+    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({}); setAddedSides([]); setSideRecipes({}); setViewingSide(null);
     setWeekPlan(null); setDayServings({}); setExcludedDays(new Set()); setReplacingDay(null); setRescalingDay(null);
     setCalView("list"); setSelectedDay(null);
     setShowShopping(false); setCheckedItems({}); setRemovedKeys(new Set());
@@ -589,12 +589,13 @@ export default function DinnerApp() {
   // Push a history entry whenever the screen changes so the back button works
   useEffect(() => {
     window.history.pushState({ screen }, "", window.location.pathname);
-  }, [screen, selectedMeal, showShopping]);
+  }, [screen, selectedMeal, showShopping, singleShoppingMeal, viewingSide]);
 
   useEffect(() => {
     function handlePop() {
       if (showShopping) { setShowShopping(false); return; }
       if (singleShoppingMeal) { setSingleShoppingMeal(null); return; }
+      if (viewingSide) { setViewingSide(null); return; }
       if (selectedMeal) { setSelectedMeal(null); return; }
       const prev = {
         "week-result": "mood",
@@ -610,7 +611,7 @@ export default function DinnerApp() {
     }
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
-  }, [screen, selectedMeal, showShopping, singleShoppingMeal]);
+  }, [screen, selectedMeal, showShopping, singleShoppingMeal, viewingSide]);
 
   const allergyLine = selectedAllergies.length ? `ALLERGIES — never include: ${selectedAllergies.map(a=>a.label).join(", ")}.` : "";
   const allCuisines = [...selectedCuisines, ...customCuisines];
@@ -881,6 +882,8 @@ export default function DinnerApp() {
       onAddSide={(sideRecipe)=>setAddedSides(prev=>[...prev,sideRecipe])}
       sideRecipes={sideRecipes}
       onSideRecipeFetched={(name,recipe)=>setSideRecipes(prev=>({...prev,[name]:recipe}))}
+      viewingSide={viewingSide}
+      setViewingSide={setViewingSide}
       extraActions={
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           <button onClick={()=>setSelectedMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
