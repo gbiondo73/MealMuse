@@ -204,7 +204,7 @@ function LoadingScreen({msg}) {
 }
 
 
-function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,addedSides=[]}) {
+function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,addedSides=[],sideRecipes={},onSideRecipeFetched}) {
   const [subQuery,    setSubQuery]    = useState("");
   const [subAnswer,   setSubAnswer]   = useState(null);
   const [subLoading,  setSubLoading]  = useState(false);
@@ -212,9 +212,8 @@ function RecipeDetail({meal,onBack,backLabel="← Back",extraActions,onAddSide,a
 
   const [sidesData,   setSidesData]   = useState(null);
   const [sidesLoading,setSidesLoading]= useState(false);
-  const [sideRecipes, setSideRecipes] = useState({}); // name -> full recipe
   const [loadingSide, setLoadingSide] = useState(null);
-  const [viewingSide, setViewingSide] = useState(null); // side recipe being viewed
+  const [viewingSide, setViewingSide] = useState(null);
 
   const ytSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 
@@ -315,7 +314,7 @@ Respond ONLY with valid JSON, no markdown:
       const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
       const clean = text.replace(/```json|```/g,"").trim();
       const recipe = JSON.parse(clean);
-      setSideRecipes(prev=>({...prev,[side.name]:recipe}));
+      if (onSideRecipeFetched) onSideRecipeFetched(side.name, recipe);
       if (onAddSide) onAddSide(recipe);
     } catch(e) { console.error("Side recipe error",e); }
     setLoadingSide(null);
@@ -556,6 +555,7 @@ export default function DinnerApp() {
   const [singleShoppingMeal, setSingleShoppingMeal] = useState(null);
   const [sChecked,           setSChecked]           = useState({});
   const [addedSides,         setAddedSides]         = useState([]); // [{name, ingredients, ...}]
+  const [sideRecipes,        setSideRecipes]        = useState({}); // name -> full recipe
 
   useState(() => {
     try {
@@ -579,7 +579,7 @@ export default function DinnerApp() {
     setScreen("welcome"); setPlanMode(null); setSelectedDiet(null); setCustomDiets([]); setCustomDietInput(""); setSelectedCuisines([]); setCustomCuisines([]); setCustomCuisineInput(""); setSelectedAllergies([]);
     setSelectedMood(null); setServings(2); setIngredients(""); setPantryItems([]); setPantryInput("");
     setLoading(false); setLoadingMsg(""); setError(null);
-    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({}); setAddedSides([]);
+    setMeals(null); setSelectedMeal(null); setSearchQuery(""); setSingleShoppingMeal(null); setSChecked({}); setAddedSides([]); setSideRecipes({});
     setWeekPlan(null); setDayServings({}); setExcludedDays(new Set()); setReplacingDay(null); setRescalingDay(null);
     setCalView("list"); setSelectedDay(null);
     setShowShopping(false); setCheckedItems({}); setRemovedKeys(new Set());
@@ -879,6 +879,8 @@ export default function DinnerApp() {
       backLabel={screen==="week-result"?"← Back to Plan":screen==="favorites"?"← Back to Favorites":"← Back to Options"}
       addedSides={addedSides.map(s=>s.name)}
       onAddSide={(sideRecipe)=>setAddedSides(prev=>[...prev,sideRecipe])}
+      sideRecipes={sideRecipes}
+      onSideRecipeFetched={(name,recipe)=>setSideRecipes(prev=>({...prev,[name]:recipe}))}
       extraActions={
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           <button onClick={()=>setSelectedMeal(null)} style={{...s.ghost,flex:1,padding:"12px",fontSize:14}}>← Back</button>
